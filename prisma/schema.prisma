@@ -1,0 +1,96 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model commit_tags {
+  commit_id  String    @db.Uuid
+  tag_name   String
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+  commits    commits   @relation(fields: [commit_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_commit_tags_commit")
+
+  @@id([commit_id, tag_name])
+}
+
+model commits {
+  id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  prompt_id      String        @db.Uuid
+  system_prompt  String
+  user_query     String
+  commit_message String?
+  created_by     String        @db.Uuid
+  created_at     DateTime?     @default(now()) @db.Timestamptz(6)
+  commit_tags    commit_tags[]
+  prompts        prompts       @relation(fields: [prompt_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_commits_prompt")
+  prompt_runs    prompt_runs[]
+  scores         scores[]
+}
+
+model project_users {
+  project_id String    @db.Uuid
+  user_id    String    @db.Uuid
+  role       String    @default("member")
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+  projects   projects  @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_project_users_project")
+  users      users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_project_users_user")
+
+  @@id([project_id, user_id])
+}
+
+model projects {
+  id            String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name          String
+  description   String?
+  created_by    String          @db.Uuid
+  created_at    DateTime?       @default(now()) @db.Timestamptz(6)
+  project_users project_users[]
+  users         users           @relation(fields: [created_by], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_projects_created_by")
+  prompts       prompts[]
+}
+
+model prompt_runs {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  commit_id   String    @db.Uuid
+  model_name  String
+  response    String?
+  latency_ms  Int?
+  token_usage Json?
+  status      String    @default("success")
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+  commits     commits   @relation(fields: [commit_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_prompt_runs_commit")
+}
+
+model prompts {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  project_id String    @db.Uuid
+  name       String
+  created_by String    @db.Uuid
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+  commits    commits[]
+  projects   projects  @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_prompts_project")
+}
+
+model scores {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  commit_id        String    @db.Uuid
+  reference_prompt String?
+  actual_prompt    String?
+  score            Float
+  scorer           String
+  reasoning        String?
+  created_at       DateTime? @default(now()) @db.Timestamptz(6)
+  commits          commits   @relation(fields: [commit_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_scores_commit")
+}
+
+
+model users {
+  id            String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email         String          @unique
+  name          String?
+  created_at    DateTime?       @default(now()) @db.Timestamptz(6)
+  project_users project_users[]
+  projects      projects[]
+}
