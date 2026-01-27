@@ -89,6 +89,7 @@ model scores {
 model users {
   id            String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   email         String          @unique
+  password      String?         // Optional for backward compatibility
   name          String?
   created_at    DateTime?       @default(now()) @db.Timestamptz(6)
   project_users project_users[]
