@@ -4,6 +4,10 @@ export const getAllTags = async () => {
   return tagRepo.getAllTags();
 };
 
+export const getAllTagMappings = async () => {
+  return tagRepo.getAllTagMappings();
+};
+
 export const tagExists = async (name: string) => {
   return tagRepo.tagExists(name);
 };

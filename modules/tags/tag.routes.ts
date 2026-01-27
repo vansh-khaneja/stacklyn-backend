@@ -4,6 +4,7 @@ import * as tagController from "./tag.controller";
 const router = Router();
 
 router.get("/", tagController.getAllTags);
+router.get("/mappings", tagController.getAllTagMappings);
 router.get("/search", tagController.searchTags);
 router.get("/:name/commits", tagController.getCommitsByTagName);
 router.delete("/:name", tagController.deleteTag);

@@ -11,6 +11,15 @@ export const getAllTags = async (_req: Request, res: Response) => {
   }
 };
 
+export const getAllTagMappings = async (_req: Request, res: Response) => {
+  try {
+    const tags = await tagService.getAllTagMappings();
+    res.json(tags);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 // Get all commits with a specific tag
 export const getCommitsByTagName = async (
   req: Request<{ name: string }>,

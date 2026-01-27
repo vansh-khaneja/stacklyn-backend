@@ -1,6 +1,6 @@
 import prisma from "../../config/db";
 
-// Get all unique tag names
+// Get all unique tag names (strings)
 export const getAllTags = async () => {
   const tags = await prisma.commit_tags.findMany({
     distinct: ["tag_name"],
@@ -9,6 +9,11 @@ export const getAllTags = async () => {
     },
   });
   return tags.map((t) => t.tag_name);
+};
+
+// Get all tag-to-commit mappings (objects)
+export const getAllTagMappings = async () => {
+  return prisma.commit_tags.findMany();
 };
 
 // Check if a tag exists (is used by any commit)
