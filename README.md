@@ -14,12 +14,16 @@ A backend system for versioning and managing AI prompts, similar to Git but for 
 |----------|-------------|
 | `projectController.createProject` | Create a new project for a user |
 | `projectController.getProjectsByUserId` | Get all projects owned by a user |
+| `projectController.updateProject` | Update project name and description |
+| `projectController.deleteProject` | Delete a project and all its data |
 
 ### Prompts
 | Function | Description |
 |----------|-------------|
 | `promptController.createPrompt` | Create a new prompt within a project |
 | `promptController.getPromptsByProjectId` | Get all prompts for a specific project |
+| `promptController.updatePrompt` | Update prompt name |
+| `promptController.deletePrompt` | Delete a prompt and all its commits |
 
 ### Commits
 | Function | Description |
@@ -32,6 +36,7 @@ A backend system for versioning and managing AI prompts, similar to Git but for 
 | Function | Description |
 |----------|-------------|
 | `runController.executeCommit` | Execute a commit by calling LLM and save the response |
+| `runController.getRunsByCommitId` | Get all runs (LLM executions) for a specific commit |
 
 ### Scores
 | Function | Description |
