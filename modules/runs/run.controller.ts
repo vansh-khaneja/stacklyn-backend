@@ -122,3 +122,12 @@ export const executeCommit = async (req: Request, res: Response) => {
     res.status(400).json({ error: error.message });
   }
 };
+
+export const getAvailableModels = async (_req: Request, res: Response) => {
+  try {
+    const models = await runService.getAvailableModels();
+    res.json(models);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+};

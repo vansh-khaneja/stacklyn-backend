@@ -5,6 +5,7 @@ const router = Router();
 
 router.post("/", runController.createRun);
 router.post("/execute", runController.executeCommit);
+router.get("/models", runController.getAvailableModels);
 router.get("/", runController.getAllRuns);
 router.get("/:id", runController.getRunById);
 router.put("/:id", runController.updateRun);

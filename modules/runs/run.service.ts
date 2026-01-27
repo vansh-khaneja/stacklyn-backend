@@ -95,3 +95,7 @@ export const executeCommit = async (
     return run;
   }
 };
+
+export const getAvailableModels = () => {
+  return import("../../services/llm").then((m) => m.getAvailableModels());
+};
