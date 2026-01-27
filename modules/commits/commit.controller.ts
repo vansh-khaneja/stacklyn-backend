@@ -123,3 +123,16 @@ export const getCommitsByUserId = async (
     res.status(500).json({ error: error.message });
   }
 };
+
+export const compareCommits = async (
+  req: Request<{ commitId1: string; commitId2: string }>,
+  res: Response
+) => {
+  try {
+    const { commitId1, commitId2 } = req.params;
+    const comparison = await commitService.compareCommits(commitId1, commitId2);
+    res.json(comparison);
+  } catch (error: any) {
+    res.status(404).json({ error: error.message });
+  }
+};

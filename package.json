@@ -18,6 +18,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
+    "diff": "^8.0.3",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "groq-sdk": "^0.37.0",
@@ -26,6 +27,7 @@
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
+    "@types/diff": "^7.0.2",
     "@types/express": "^5.0.6",
     "@types/node": "^25.0.10",
     "prisma": "^7.3.0",
