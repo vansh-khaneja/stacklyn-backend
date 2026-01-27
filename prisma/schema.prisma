@@ -27,6 +27,10 @@ model commits {
   prompts        prompts       @relation(fields: [prompt_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_commits_prompt")
   prompt_runs    prompt_runs[]
   scores         scores[]
+
+  @@index([prompt_id]) // Fast lookup for commits by prompt
+  @@index([created_by]) // Fast lookup for commits by user
+  @@index([created_at(sort: Desc)]) // Fast sorting by date
 }
 
 model project_users {
@@ -38,6 +42,7 @@ model project_users {
   users      users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_project_users_user")
 
   @@id([project_id, user_id])
+  @@index([user_id]) // Fast lookup for shared projects by user
 }
 
 model projects {
@@ -49,6 +54,9 @@ model projects {
   project_users project_users[]
   users         users           @relation(fields: [created_by], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_projects_created_by")
   prompts       prompts[]
+
+  @@index([created_by]) // Fast lookup for user's own projects
+  @@index([created_at(sort: Desc)]) // Fast sorting by date
 }
 
 model prompt_runs {
@@ -61,6 +69,10 @@ model prompt_runs {
   status      String    @default("success")
   created_at  DateTime? @default(now()) @db.Timestamptz(6)
   commits     commits   @relation(fields: [commit_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_prompt_runs_commit")
+
+  @@index([commit_id]) // Fast lookup for runs by commit
+  @@index([created_at(sort: Desc)]) // Fast sorting by date
+  @@index([status]) // Fast filtering by status
 }
 
 model prompts {
@@ -71,6 +83,9 @@ model prompts {
   created_at DateTime? @default(now()) @db.Timestamptz(6)
   commits    commits[]
   projects   projects  @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_prompts_project")
+
+  @@index([project_id]) // Fast lookup for prompts by project
+  @@index([created_by]) // Fast lookup for prompts by user
 }
 
 model scores {
@@ -83,6 +98,9 @@ model scores {
   reasoning        String?
   created_at       DateTime? @default(now()) @db.Timestamptz(6)
   commits          commits   @relation(fields: [commit_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_scores_commit")
+
+  @@index([commit_id]) // Fast lookup for scores by commit
+  @@index([scorer]) // Fast filtering by scorer
 }
 
 
