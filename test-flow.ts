@@ -46,11 +46,6 @@ function mockRes() {
 // }
 
 
-
-
-
-
-
 ////////////////////////////// create project for that user
 
 
@@ -69,14 +64,12 @@ function mockRes() {
 // testCreateProject().then(() => process.exit(0));
 
 
-
-
 // /////////////////////////// create prompt
 
 // async function testCreatePrompt() {
 //   const req = mockReq({
 //     name: "TODO: website dev prompt",
-//     project_id: "2518c406-6807-4601-a79e-3afd138876fb", 
+//     project_id: "2518c406-6807-4601-a79e-3afd138876fb",
 //     created_by: "47123874-5f6f-4eb5-a9a6-e30563eb9943",
 //   });
 //   const res = mockRes();
@@ -86,8 +79,6 @@ function mockRes() {
 
 // // Run
 // testCreatePrompt().then(() => process.exit(0));
-
-
 
 
 ///////////////////////////// create commit
@@ -109,8 +100,6 @@ function mockRes() {
 // testCreateCommit().then(() => process.exit(0));
 
 
-
-
 ///////////////////////////// execute commit (call LLM)
 
 // async function testExecuteCommit() {
@@ -125,13 +114,6 @@ function mockRes() {
 
 // // Run
 // testExecuteCommit().then(() => process.exit(0));
-
-
-
-
-
-
-
 
 
 ///////////////////////////// create score (dummy for now)
@@ -154,11 +136,7 @@ function mockRes() {
 // testCreateScore().then(() => process.exit(0));
 
 
-
-///////////////////////////// add tag to commit 
-
-
-
+///////////////////////////// add tag to commit
 
 // Add tag directly to a commit
 // async function testAddTagToCommit() {
@@ -170,22 +148,6 @@ function mockRes() {
 //   await commitController.addTagToCommit(req, res);
 //   return res.data;
 // }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 ///////////////////////////// get all projects for a user
@@ -204,8 +166,6 @@ function mockRes() {
 // testGetProjectsByUserId().then(() => process.exit(0));
 
 
-
-
 ///////////////////////////// get all prompts for a project
 
 // async function testGetPromptsByProjectId() {
@@ -220,12 +180,6 @@ function mockRes() {
 
 // // Run
 // testGetPromptsByProjectId().then(() => process.exit(0));
-
-
-
-
-
-
 
 
 ///////////////////////////// get all commits for a prompt
@@ -244,13 +198,6 @@ function mockRes() {
 // testGetCommitsByPromptId().then(() => process.exit(0));
 
 
-
-
-
-
-
-
-
 ///////////////////////////// get all runs for a commit
 
 // async function testGetRunsByCommitId() {
@@ -265,8 +212,6 @@ function mockRes() {
 
 // // Run
 // testGetRunsByCommitId().then(() => process.exit(0));
-
-
 
 
 ///////////////////////////// delete a prompt
@@ -285,8 +230,6 @@ function mockRes() {
 // testDeletePrompt().then(() => process.exit(0));
 
 
-
-
 ///////////////////////////// delete a project
 
 // async function testDeleteProject() {
@@ -301,8 +244,6 @@ function mockRes() {
 
 // // Run
 // testDeleteProject().then(() => process.exit(0));
-
-
 
 
 ///////////////////////////// update project title and description
@@ -321,8 +262,6 @@ function mockRes() {
 // testUpdateProject().then(() => process.exit(0));
 
 
-
-
 ///////////////////////////// update prompt name
 
 // async function testUpdatePrompt() {
@@ -337,5 +276,3 @@ function mockRes() {
 
 // // Run
 // testUpdatePrompt().then(() => process.exit(0));
-
-
