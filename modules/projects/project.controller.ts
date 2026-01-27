@@ -116,3 +116,17 @@ export const getProjectsByUserId = async (
     res.status(500).json({ error: error.message });
   }
 };
+
+export const addProjectMemberByEmail = async (
+  req: Request<{ id: string }>,
+  res: Response
+) => {
+  try {
+    const { id } = req.params;
+    const { email, role } = req.body;
+    const member = await projectService.addProjectMemberByEmail(id, email, role);
+    res.status(201).json(member);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+};

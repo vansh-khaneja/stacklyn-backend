@@ -1,4 +1,5 @@
 import * as projectRepo from "./project.repo";
+import * as userRepo from "../users/user.repo";
 
 export const createProject = async (data: {
   name: string;
@@ -54,4 +55,19 @@ export const removeProjectMember = async (projectId: string, userId: string) => 
 
 export const getProjectsByUserId = async (userId: string) => {
   return projectRepo.getProjectsByUserId(userId);
+};
+
+export const addProjectMemberByEmail = async (
+  projectId: string,
+  email: string,
+  role: string = "member"
+) => {
+  await getProjectById(projectId);
+
+  const user = await userRepo.getUserByEmail(email);
+  if (!user) {
+    throw new Error("User not found with this email");
+  }
+
+  return projectRepo.addProjectMember(projectId, user.id, role);
 };
