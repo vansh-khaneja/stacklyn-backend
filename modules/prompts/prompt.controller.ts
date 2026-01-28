@@ -1,5 +1,9 @@
 import { Request, Response } from "express";
 import * as promptService from "./prompt.service";
+import {
+  verifyPromptAccess,
+  verifyProjectAccess,
+} from "../../utils/authorization.utils";
 
 export const createPrompt = async (req: Request, res: Response) => {
   try {
@@ -8,6 +12,12 @@ export const createPrompt = async (req: Request, res: Response) => {
 
     if (!userId) {
       return res.status(401).json({ error: "User not found" });
+    }
+
+    // ✅ Verify user has access to the project before creating a prompt
+    const hasAccess = await verifyProjectAccess(userId, project_id);
+    if (!hasAccess) {
+      return res.status(403).json({ error: "Access denied. You don't have access to this project." });
     }
 
     const prompt = await promptService.createPrompt({
@@ -27,6 +37,18 @@ export const getPromptById = async (
 ) => {
   try {
     const { id } = req.params;
+    const userId = (req as any).userId;
+
+    if (!userId) {
+      return res.status(401).json({ error: "User not found" });
+    }
+
+    // ✅ Verify user has access to this prompt
+    const hasAccess = await verifyPromptAccess(userId, id);
+    if (!hasAccess) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
     const prompt = await promptService.getPromptById(id);
     res.json(prompt);
   } catch (error: any) {
@@ -55,6 +77,18 @@ export const getPromptsByProjectId = async (
 ) => {
   try {
     const { projectId } = req.params;
+    const userId = (req as any).userId;
+
+    if (!userId) {
+      return res.status(401).json({ error: "User not found" });
+    }
+
+    // ✅ Verify user has access to the project
+    const hasAccess = await verifyProjectAccess(userId, projectId);
+    if (!hasAccess) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
     const prompts = await promptService.getPromptsByProjectId(projectId);
     res.json(prompts);
   } catch (error: any) {
@@ -69,6 +103,18 @@ export const updatePrompt = async (
   try {
     const { id } = req.params;
     const { name } = req.body;
+    const userId = (req as any).userId;
+
+    if (!userId) {
+      return res.status(401).json({ error: "User not found" });
+    }
+
+    // ✅ Verify user has access to this prompt
+    const hasAccess = await verifyPromptAccess(userId, id);
+    if (!hasAccess) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
     const prompt = await promptService.updatePrompt(id, { name });
     res.json(prompt);
   } catch (error: any) {
@@ -82,6 +128,18 @@ export const deletePrompt = async (
 ) => {
   try {
     const { id } = req.params;
+    const userId = (req as any).userId;
+
+    if (!userId) {
+      return res.status(401).json({ error: "User not found" });
+    }
+
+    // ✅ Verify user has access to this prompt
+    const hasAccess = await verifyPromptAccess(userId, id);
+    if (!hasAccess) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
     await promptService.deletePrompt(id);
     res.status(204).send();
   } catch (error: any) {
@@ -94,8 +152,19 @@ export const getPromptsByUserId = async (
   res: Response
 ) => {
   try {
-    const { userId } = req.params;
-    const prompts = await promptService.getPromptsByUserId(userId);
+    const { userId: targetUserId } = req.params;
+    const userId = (req as any).userId;
+
+    if (!userId) {
+      return res.status(401).json({ error: "User not found" });
+    }
+
+    // ✅ Users can only view their own prompts
+    if (userId !== targetUserId) {
+      return res.status(403).json({ error: "Access denied. You can only view your own prompts." });
+    }
+
+    const prompts = await promptService.getPromptsByUserId(targetUserId);
     res.json(prompts);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
