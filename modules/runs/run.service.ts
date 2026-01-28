@@ -99,3 +99,7 @@ export const executeCommit = async (
 export const getAvailableModels = () => {
   return import("../../services/llm").then((m) => m.getAvailableModels());
 };
+
+export const getRunsByUserId = async (userId: string) => {
+  return runRepo.getRunsByUserId(userId);
+};

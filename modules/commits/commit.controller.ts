@@ -3,14 +3,19 @@ import * as commitService from "./commit.service";
 
 export const createCommit = async (req: Request, res: Response) => {
   try {
-    const { prompt_id, system_prompt, user_query, commit_message, created_by } =
-      req.body;
+    const { prompt_id, system_prompt, user_query, commit_message } = req.body;
+    const userId = (req as any).userId;
+
+    if (!userId) {
+      return res.status(401).json({ error: "User not found" });
+    }
+
     const commit = await commitService.createCommit({
       prompt_id,
       system_prompt,
       user_query,
       commit_message,
-      created_by,
+      created_by: userId,
     });
     res.status(201).json(commit);
   } catch (error: any) {
@@ -31,9 +36,15 @@ export const getCommitById = async (
   }
 };
 
-export const getAllCommits = async (_req: Request, res: Response) => {
+export const getAllCommits = async (req: Request, res: Response) => {
   try {
-    const commits = await commitService.getAllCommits();
+    const userId = (req as any).userId;
+
+    if (!userId) {
+      return res.status(401).json({ error: "User not found" });
+    }
+
+    const commits = await commitService.getCommitsByUserId(userId);
     res.json(commits);
   } catch (error: any) {
     res.status(500).json({ error: error.message });

@@ -65,3 +65,7 @@ export const getScoresAboveThreshold = async (threshold: number) => {
   }
   return scoreRepo.getScoresAboveThreshold(threshold);
 };
+
+export const getScoresByUserId = async (userId: string) => {
+  return scoreRepo.getScoresByUserId(userId);
+};

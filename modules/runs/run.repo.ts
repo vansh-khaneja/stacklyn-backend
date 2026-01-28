@@ -88,3 +88,18 @@ export const getRunsByStatus = async (status: string) => {
     },
   });
 };
+
+export const getRunsByUserId = async (userId: string) => {
+  return prisma.prompt_runs.findMany({
+    where: {
+      commits: {
+        created_by: userId,
+      },
+    },
+    include: {
+      commits: {
+        select: { id: true, commit_message: true },
+      },
+    },
+  });
+};

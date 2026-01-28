@@ -3,11 +3,17 @@ import * as projectService from "./project.service";
 
 export const createProject = async (req: Request, res: Response) => {
   try {
-    const { name, description, created_by } = req.body;
+    const { name, description } = req.body;
+    const userId = (req as any).userId; // DB user UUID
+
+    if (!userId) {
+      return res.status(401).json({ error: "User not found" });
+    }
+
     const project = await projectService.createProject({
       name,
       description,
-      created_by,
+      created_by: userId, // Use DB user UUID
     });
     res.status(201).json(project);
   } catch (error: any) {
@@ -28,9 +34,16 @@ export const getProjectById = async (
   }
 };
 
-export const getAllProjects = async (_req: Request, res: Response) => {
+export const getAllProjects = async (req: Request, res: Response) => {
   try {
-    const projects = await projectService.getAllProjects();
+    const userId = (req as any).userId; // DB user UUID
+
+    if (!userId) {
+      return res.status(401).json({ error: "User not found" });
+    }
+
+    // Filter projects by the authenticated user's DB UUID
+    const projects = await projectService.getProjectsByUserId(userId);
     res.json(projects);
   } catch (error: any) {
     res.status(500).json({ error: error.message });

@@ -38,9 +38,15 @@ export const getScoreById = async (
   }
 };
 
-export const getAllScores = async (_req: Request, res: Response) => {
+export const getAllScores = async (req: Request, res: Response) => {
   try {
-    const scores = await scoreService.getAllScores();
+    const userId = (req as any).userId;
+
+    if (!userId) {
+      return res.status(401).json({ error: "User not found" });
+    }
+
+    const scores = await scoreService.getScoresByUserId(userId);
     res.json(scores);
   } catch (error: any) {
     res.status(500).json({ error: error.message });

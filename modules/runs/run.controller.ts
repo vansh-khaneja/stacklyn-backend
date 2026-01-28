@@ -32,9 +32,15 @@ export const getRunById = async (
   }
 };
 
-export const getAllRuns = async (_req: Request, res: Response) => {
+export const getAllRuns = async (req: Request, res: Response) => {
   try {
-    const runs = await runService.getAllRuns();
+    const userId = (req as any).userId;
+
+    if (!userId) {
+      return res.status(401).json({ error: "User not found" });
+    }
+
+    const runs = await runService.getRunsByUserId(userId);
     res.json(runs);
   } catch (error: any) {
     res.status(500).json({ error: error.message });

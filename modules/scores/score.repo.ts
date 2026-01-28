@@ -101,3 +101,18 @@ export const getScoresAboveThreshold = async (threshold: number) => {
     },
   });
 };
+
+export const getScoresByUserId = async (userId: string) => {
+  return prisma.scores.findMany({
+    where: {
+      commits: {
+        created_by: userId,
+      },
+    },
+    include: {
+      commits: {
+        select: { id: true, commit_message: true },
+      },
+    },
+  });
+};
