@@ -1,5 +1,9 @@
 import { Request, Response } from "express";
 import * as projectService from "./project.service";
+import {
+  verifyProjectAccess,
+  verifyProjectOwnership,
+} from "../../utils/authorization.utils";
 
 export const createProject = async (req: Request, res: Response) => {
   try {
@@ -27,6 +31,18 @@ export const getProjectById = async (
 ) => {
   try {
     const { id } = req.params;
+    const userId = (req as any).userId;
+
+    if (!userId) {
+      return res.status(401).json({ error: "User not found" });
+    }
+
+    // ✅ Verify user has access to this project
+    const hasAccess = await verifyProjectAccess(userId, id);
+    if (!hasAccess) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
     const project = await projectService.getProjectById(id);
     res.json(project);
   } catch (error: any) {
@@ -57,6 +73,18 @@ export const updateProject = async (
   try {
     const { id } = req.params;
     const { name, description } = req.body;
+    const userId = (req as any).userId;
+
+    if (!userId) {
+      return res.status(401).json({ error: "User not found" });
+    }
+
+    // ✅ Verify user owns this project (only owner can update)
+    const isOwner = await verifyProjectOwnership(userId, id);
+    if (!isOwner) {
+      return res.status(403).json({ error: "Access denied. Only project owner can update the project." });
+    }
+
     const project = await projectService.updateProject(id, { name, description });
     res.json(project);
   } catch (error: any) {
@@ -70,6 +98,18 @@ export const deleteProject = async (
 ) => {
   try {
     const { id } = req.params;
+    const userId = (req as any).userId;
+
+    if (!userId) {
+      return res.status(401).json({ error: "User not found" });
+    }
+
+    // ✅ Verify user owns this project (only owner can delete)
+    const isOwner = await verifyProjectOwnership(userId, id);
+    if (!isOwner) {
+      return res.status(403).json({ error: "Access denied. Only project owner can delete the project." });
+    }
+
     await projectService.deleteProject(id);
     res.status(204).send();
   } catch (error: any) {
@@ -83,6 +123,18 @@ export const getProjectMembers = async (
 ) => {
   try {
     const { id } = req.params;
+    const userId = (req as any).userId;
+
+    if (!userId) {
+      return res.status(401).json({ error: "User not found" });
+    }
+
+    // ✅ Verify user has access to this project
+    const hasAccess = await verifyProjectAccess(userId, id);
+    if (!hasAccess) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
     const members = await projectService.getProjectMembers(id);
     res.json(members);
   } catch (error: any) {
@@ -96,8 +148,20 @@ export const addProjectMember = async (
 ) => {
   try {
     const { id } = req.params;
-    const { userId, role } = req.body;
-    const member = await projectService.addProjectMember(id, userId, role);
+    const { userId: memberUserId, role } = req.body;
+    const userId = (req as any).userId;
+
+    if (!userId) {
+      return res.status(401).json({ error: "User not found" });
+    }
+
+    // ✅ Verify user owns this project (only owner can add members)
+    const isOwner = await verifyProjectOwnership(userId, id);
+    if (!isOwner) {
+      return res.status(403).json({ error: "Access denied. Only project owner can add members." });
+    }
+
+    const member = await projectService.addProjectMember(id, memberUserId, role);
     res.status(201).json(member);
   } catch (error: any) {
     res.status(400).json({ error: error.message });
@@ -109,8 +173,20 @@ export const removeProjectMember = async (
   res: Response
 ) => {
   try {
-    const { id, userId } = req.params;
-    await projectService.removeProjectMember(id, userId);
+    const { id, userId: memberUserId } = req.params;
+    const userId = (req as any).userId;
+
+    if (!userId) {
+      return res.status(401).json({ error: "User not found" });
+    }
+
+    // ✅ Verify user owns this project (only owner can remove members)
+    const isOwner = await verifyProjectOwnership(userId, id);
+    if (!isOwner) {
+      return res.status(403).json({ error: "Access denied. Only project owner can remove members." });
+    }
+
+    await projectService.removeProjectMember(id, memberUserId);
     res.status(204).send();
   } catch (error: any) {
     res.status(404).json({ error: error.message });
@@ -122,8 +198,19 @@ export const getProjectsByUserId = async (
   res: Response
 ) => {
   try {
-    const { userId } = req.params;
-    const projects = await projectService.getProjectsByUserId(userId);
+    const { userId: targetUserId } = req.params;
+    const userId = (req as any).userId;
+
+    if (!userId) {
+      return res.status(401).json({ error: "User not found" });
+    }
+
+    // ✅ Users can only view their own projects
+    if (userId !== targetUserId) {
+      return res.status(403).json({ error: "Access denied. You can only view your own projects." });
+    }
+
+    const projects = await projectService.getProjectsByUserId(targetUserId);
     res.json(projects);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -137,6 +224,18 @@ export const addProjectMemberByEmail = async (
   try {
     const { id } = req.params;
     const { email, role } = req.body;
+    const userId = (req as any).userId;
+
+    if (!userId) {
+      return res.status(401).json({ error: "User not found" });
+    }
+
+    // ✅ Verify user owns this project (only owner can add members)
+    const isOwner = await verifyProjectOwnership(userId, id);
+    if (!isOwner) {
+      return res.status(403).json({ error: "Access denied. Only project owner can add members." });
+    }
+
     const member = await projectService.addProjectMemberByEmail(id, email, role);
     res.status(201).json(member);
   } catch (error: any) {
