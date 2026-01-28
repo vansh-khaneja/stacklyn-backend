@@ -21,6 +21,10 @@ export const getAllProjects = async () => {
   return projectRepo.getAllProjects();
 };
 
+export const getProjectsByUserId = async (userId: string) => {
+  return projectRepo.getProjectsByUserId(userId);
+};
+
 export const updateProject = async (
   id: string,
   data: { name?: string; description?: string }
@@ -51,10 +55,6 @@ export const addProjectMember = async (
 export const removeProjectMember = async (projectId: string, userId: string) => {
   await getProjectById(projectId);
   return projectRepo.removeProjectMember(projectId, userId);
-};
-
-export const getProjectsByUserId = async (userId: string) => {
-  return projectRepo.getProjectsByUserId(userId);
 };
 
 export const addProjectMemberByEmail = async (

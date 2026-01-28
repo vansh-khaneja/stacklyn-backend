@@ -3,11 +3,17 @@ import * as promptService from "./prompt.service";
 
 export const createPrompt = async (req: Request, res: Response) => {
   try {
-    const { name, project_id, created_by } = req.body;
+    const { name, project_id } = req.body;
+    const userId = (req as any).userId;
+
+    if (!userId) {
+      return res.status(401).json({ error: "User not found" });
+    }
+
     const prompt = await promptService.createPrompt({
       name,
       project_id,
-      created_by,
+      created_by: userId,
     });
     res.status(201).json(prompt);
   } catch (error: any) {
@@ -28,9 +34,15 @@ export const getPromptById = async (
   }
 };
 
-export const getAllPrompts = async (_req: Request, res: Response) => {
+export const getAllPrompts = async (req: Request, res: Response) => {
   try {
-    const prompts = await promptService.getAllPrompts();
+    const userId = (req as any).userId;
+
+    if (!userId) {
+      return res.status(401).json({ error: "User not found" });
+    }
+
+    const prompts = await promptService.getPromptsByUserId(userId);
     res.json(prompts);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
