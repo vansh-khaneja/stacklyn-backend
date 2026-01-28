@@ -71,3 +71,16 @@ export const addProjectMemberByEmail = async (
 
   return projectRepo.addProjectMember(projectId, user.id, role);
 };
+
+export const getMembershipsByUserId = async (userId: string) => {
+  return projectRepo.getMembershipsByUserId(userId);
+};
+
+export const updateMemberRole = async (
+  projectId: string,
+  userId: string,
+  role: string
+) => {
+  await getProjectById(projectId);
+  return projectRepo.updateMemberRole(projectId, userId, role);
+};

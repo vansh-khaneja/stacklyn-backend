@@ -4,6 +4,7 @@ import {
   verifyPromptAccess,
   verifyProjectAccess,
 } from "../../utils/authorization.utils";
+import { logActivity } from "../activities/activity.service";
 
 export const createPrompt = async (req: Request, res: Response) => {
   try {
@@ -25,6 +26,16 @@ export const createPrompt = async (req: Request, res: Response) => {
       project_id,
       created_by: userId,
     });
+
+    logActivity({
+      userId,
+      projectId: project_id,
+      entityType: "prompt",
+      entityId: prompt.id,
+      action: "created",
+      title: `Prompt created: '${prompt.name}'`,
+    });
+
     res.status(201).json(prompt);
   } catch (error: any) {
     res.status(400).json({ error: error.message });
@@ -116,6 +127,16 @@ export const updatePrompt = async (
     }
 
     const prompt = await promptService.updatePrompt(id, { name });
+
+    logActivity({
+      userId,
+      projectId: prompt.project_id,
+      entityType: "prompt",
+      entityId: prompt.id,
+      action: "updated",
+      title: `Prompt updated: '${prompt.name}'`,
+    });
+
     res.json(prompt);
   } catch (error: any) {
     res.status(400).json({ error: error.message });
@@ -140,7 +161,18 @@ export const deletePrompt = async (
       return res.status(403).json({ error: "Access denied" });
     }
 
+    const prompt = await promptService.getPromptById(id);
     await promptService.deletePrompt(id);
+
+    logActivity({
+      userId,
+      projectId: prompt.project_id,
+      entityType: "prompt",
+      entityId: id,
+      action: "deleted",
+      title: `Prompt deleted: '${prompt.name}'`,
+    });
+
     res.status(204).send();
   } catch (error: any) {
     res.status(404).json({ error: error.message });

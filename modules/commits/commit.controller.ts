@@ -1,6 +1,8 @@
 import { Request, Response } from "express";
 import * as commitService from "./commit.service";
+import * as promptService from "../prompts/prompt.service";
 import { verifyCommitAccess, verifyPromptAccess } from "../../utils/authorization.utils";
+import { logActivity } from "../activities/activity.service";
 
 export const createCommit = async (req: Request, res: Response) => {
   try {
@@ -17,6 +19,7 @@ export const createCommit = async (req: Request, res: Response) => {
       return res.status(403).json({ error: "Access denied. You don't have access to this prompt." });
     }
 
+    const prompt = await promptService.getPromptById(prompt_id);
     const commit = await commitService.createCommit({
       prompt_id,
       system_prompt,
@@ -24,6 +27,16 @@ export const createCommit = async (req: Request, res: Response) => {
       commit_message,
       created_by: userId,
     });
+
+    logActivity({
+      userId,
+      projectId: prompt.project_id,
+      entityType: "commit",
+      entityId: commit.id,
+      action: "created",
+      title: `Updated '${prompt.name}'`,
+    });
+
     res.status(201).json(commit);
   } catch (error: any) {
     res.status(400).json({ error: error.message });
@@ -119,6 +132,17 @@ export const updateCommit = async (
       user_query,
       commit_message,
     });
+
+    const prompt = await promptService.getPromptById(commit.prompt_id);
+    logActivity({
+      userId,
+      projectId: prompt.project_id,
+      entityType: "commit",
+      entityId: commit.id,
+      action: "updated",
+      title: `Updated '${prompt.name}'`,
+    });
+
     res.json(commit);
   } catch (error: any) {
     res.status(400).json({ error: error.message });
@@ -143,7 +167,19 @@ export const deleteCommit = async (
       return res.status(403).json({ error: "Access denied" });
     }
 
+    const commit = await commitService.getCommitById(id);
+    const prompt = await promptService.getPromptById(commit.prompt_id);
     await commitService.deleteCommit(id);
+
+    logActivity({
+      userId,
+      projectId: prompt.project_id,
+      entityType: "commit",
+      entityId: id,
+      action: "deleted",
+      title: `Deleted commit from '${prompt.name}'`,
+    });
+
     res.status(204).send();
   } catch (error: any) {
     res.status(404).json({ error: error.message });

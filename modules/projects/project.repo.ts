@@ -94,10 +94,40 @@ export const removeProjectMember = async (projectId: string, userId: string) => 
 export const getProjectsByUserId = async (userId: string) => {
   return prisma.projects.findMany({
     where: {
-      OR: [
-        { created_by: userId },
-        { project_users: { some: { user_id: userId } } },
-      ],
+      created_by: userId,
+    },
+  });
+};
+
+export const getMembershipsByUserId = async (userId: string) => {
+  return prisma.project_users.findMany({
+    where: { user_id: userId },
+    include: {
+      projects: true,
+      users: {
+        select: { id: true, email: true, name: true },
+      },
+    },
+  });
+};
+
+export const updateMemberRole = async (
+  projectId: string,
+  userId: string,
+  role: string
+) => {
+  return prisma.project_users.update({
+    where: {
+      project_id_user_id: {
+        project_id: projectId,
+        user_id: userId,
+      },
+    },
+    data: { role },
+    include: {
+      users: {
+        select: { id: true, email: true, name: true },
+      },
     },
   });
 };
