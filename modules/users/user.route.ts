@@ -5,6 +5,9 @@ const router = Router();
 
 router.post("/", userController.createUser);
 router.get("/", userController.getAllUsers);
+router.get("/me", userController.getMe);
+router.put("/me", userController.updateMe);
+router.delete("/me", userController.deleteMe);
 router.get("/:id", userController.getUserById);
 router.get("/email/:email", userController.getUserByEmail);
 router.put("/:id", userController.updateUser);

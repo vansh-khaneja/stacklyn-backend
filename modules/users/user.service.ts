@@ -26,7 +26,7 @@ export const getUserByEmail = async (email: string) => {
 
 export const updateUser = async (
   id: string,
-  data: { email?: string; name?: string }
+  data: { email?: string; name?: string; image_url?: string }
 ) => {
   await getUserById(id);
   return userRepo.updateUser(id, data);
