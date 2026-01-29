@@ -28,7 +28,7 @@ export const getActivitiesForUserProjects = async (
     },
     include: {
       users: {
-        select: { id: true, email: true, name: true },
+        select: { id: true, email: true, name: true, image_url: true },
       },
       projects: {
         select: { id: true, name: true },

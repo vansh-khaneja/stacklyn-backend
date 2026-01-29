@@ -28,7 +28,7 @@ export const getProjectById = async (id: string) => {
       project_users: {
         include: {
           users: {
-            select: { id: true, email: true, name: true },
+            select: { id: true, email: true, name: true, image_url: true },
           },
         },
       },
@@ -42,7 +42,7 @@ export const getAllProjects = async () => {
       project_users: {
         include: {
           users: {
-            select: { id: true, email: true, name: true },
+            select: { id: true, email: true, name: true, image_url: true },
           },
         },
       },
@@ -71,7 +71,7 @@ export const getProjectMembers = async (projectId: string) => {
     where: { project_id: projectId },
     include: {
       users: {
-        select: { id: true, email: true, name: true },
+        select: { id: true, email: true, name: true, image_url: true },
       },
     },
   });
@@ -116,7 +116,7 @@ export const getMembershipsByUserId = async (userId: string) => {
     include: {
       projects: true,
       users: {
-        select: { id: true, email: true, name: true },
+        select: { id: true, email: true, name: true, image_url: true },
       },
     },
   });
@@ -137,7 +137,7 @@ export const updateMemberRole = async (
     data: { role },
     include: {
       users: {
-        select: { id: true, email: true, name: true },
+        select: { id: true, email: true, name: true, image_url: true },
       },
     },
   });

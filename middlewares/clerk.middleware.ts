@@ -21,6 +21,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
                 const user = await clerkClient.users.getUser(clerkUserId);
                 const email = user.emailAddresses.find(e => e.id === user.primaryEmailAddressId)?.emailAddress;
                 const name = `${user.firstName || ''} ${user.lastName || ''}`.trim() || email;
+                const imageUrl = user.imageUrl || null;
 
                 if (email) {
                     let dbUser = await prisma.users.findUnique({
@@ -32,9 +33,15 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
                             data: {
                                 email,
                                 name: name || 'User',
+                                image_url: imageUrl,
                             }
                         });
                         console.log(`✅ [AUTH] New user created: ${email}`);
+                    } else if (dbUser.image_url !== imageUrl) {
+                        dbUser = await prisma.users.update({
+                            where: { email },
+                            data: { image_url: imageUrl }
+                        });
                     }
 
                     // Attach user data to request
