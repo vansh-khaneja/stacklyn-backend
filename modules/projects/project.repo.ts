@@ -5,9 +5,20 @@ export const createProject = async (data: {
   description?: string;
   created_by: string;
 }) => {
-  return prisma.projects.create({
+  const project = await prisma.projects.create({
     data,
   });
+
+  // Add creator to project_users as admin
+  await prisma.project_users.create({
+    data: {
+      project_id: project.id,
+      user_id: data.created_by,
+      role: "admin",
+    },
+  });
+
+  return project;
 };
 
 export const getProjectById = async (id: string) => {
