@@ -86,3 +86,22 @@ export async function verifyCommitAccess(
 
   return verifyProjectAccess(userId, commit.prompts.project_id);
 }
+/**
+ * Get the role of a user in a project
+ * Returns the role string (e.g., "admin", "member") or null if not a member
+ */
+export async function getUserProjectRole(
+  userId: string,
+  projectId: string
+): Promise<string | null> {
+  const membership = await prisma.project_users.findUnique({
+    where: {
+      project_id_user_id: {
+        project_id: projectId,
+        user_id: userId,
+      },
+    },
+  });
+
+  return membership?.role ?? null;
+}

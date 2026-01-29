@@ -10,6 +10,7 @@ import runRoutes from "./modules/runs/run.routes";
 import scoreRoutes from "./modules/scores/score.routes";
 import tagRoutes from "./modules/tags/tag.routes";
 import searchRoutes from "./modules/search/search.routes";
+import activityRoutes from "./modules/activities/activity.routes";
 
 const app = express();
 
@@ -35,6 +36,7 @@ app.use("/api/runs", runRoutes);
 app.use("/api/scores", scoreRoutes);
 app.use("/api/tags", tagRoutes);
 app.use("/api/search", searchRoutes);
+app.use("/api/activities", activityRoutes);
 
 // Error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

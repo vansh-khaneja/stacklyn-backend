@@ -54,6 +54,7 @@ model projects {
   project_users project_users[]
   users         users           @relation(fields: [created_by], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_projects_created_by")
   prompts       prompts[]
+  activities    activities[]
 
   @@index([created_by])
   @@index([created_at(sort: Desc)])
@@ -115,4 +116,43 @@ model users {
   password      String?
   project_users project_users[]
   projects      projects[]
+  activities    activities[]
+}
+
+model activities {
+  id          String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id     String?         @db.Uuid
+  project_id  String?         @db.Uuid
+  entity_type entity_type
+  entity_id   String          @db.Uuid
+  action      activity_action
+  title       String
+  metadata    Json?
+  created_at  DateTime?       @default(now()) @db.Timestamptz(6)
+
+  users       users?          @relation(fields: [user_id], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "fk_activities_user")
+  projects    projects?       @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_activities_project")
+
+  @@index([project_id])
+  @@index([user_id])
+  @@index([entity_type])
+  @@index([created_at(sort: Desc)])
+}
+
+enum entity_type {
+  project
+  prompt
+  commit
+  run
+  score
+  tag
+  member
+}
+
+enum activity_action {
+  created
+  updated
+  deleted
+  executed
+  failed
 }

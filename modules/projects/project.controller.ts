@@ -3,7 +3,9 @@ import * as projectService from "./project.service";
 import {
   verifyProjectAccess,
   verifyProjectOwnership,
+  getUserProjectRole,
 } from "../../utils/authorization.utils";
+import { logActivity } from "../activities/activity.service";
 
 export const createProject = async (req: Request, res: Response) => {
   try {
@@ -19,6 +21,16 @@ export const createProject = async (req: Request, res: Response) => {
       description,
       created_by: userId, // Use DB user UUID
     });
+
+    logActivity({
+      userId,
+      projectId: project.id,
+      entityType: "project",
+      entityId: project.id,
+      action: "created",
+      title: `Project created: '${project.name}'`,
+    });
+
     res.status(201).json(project);
   } catch (error: any) {
     res.status(400).json({ error: error.message });
@@ -86,6 +98,16 @@ export const updateProject = async (
     }
 
     const project = await projectService.updateProject(id, { name, description });
+
+    logActivity({
+      userId,
+      projectId: project.id,
+      entityType: "project",
+      entityId: project.id,
+      action: "updated",
+      title: `Project updated: '${project.name}'`,
+    });
+
     res.json(project);
   } catch (error: any) {
     res.status(400).json({ error: error.message });
@@ -110,7 +132,17 @@ export const deleteProject = async (
       return res.status(403).json({ error: "Access denied. Only project owner can delete the project." });
     }
 
+    const project = await projectService.getProjectById(id);
     await projectService.deleteProject(id);
+
+    logActivity({
+      userId,
+      entityType: "project",
+      entityId: id,
+      action: "deleted",
+      title: `Project deleted: '${project.name}'`,
+    });
+
     res.status(204).send();
   } catch (error: any) {
     res.status(404).json({ error: error.message });
@@ -136,7 +168,14 @@ export const getProjectMembers = async (
     }
 
     const members = await projectService.getProjectMembers(id);
-    res.json(members);
+
+    // Add isCurrentUser flag
+    const membersWithFlag = members.map((member: any) => ({
+      ...member,
+      isCurrentUser: member.user_id === userId,
+    }));
+
+    res.json(membersWithFlag);
   } catch (error: any) {
     res.status(404).json({ error: error.message });
   }
@@ -155,13 +194,23 @@ export const addProjectMember = async (
       return res.status(401).json({ error: "User not found" });
     }
 
-    // ✅ Verify user owns this project (only owner can add members)
-    const isOwner = await verifyProjectOwnership(userId, id);
-    if (!isOwner) {
-      return res.status(403).json({ error: "Access denied. Only project owner can add members." });
+    // Only admin can add members
+    const userRole = await getUserProjectRole(userId, id);
+    if (userRole !== "admin") {
+      return res.status(403).json({ error: "Access denied. Only admins can add members." });
     }
 
     const member = await projectService.addProjectMember(id, memberUserId, role);
+
+    logActivity({
+      userId,
+      projectId: id,
+      entityType: "member",
+      entityId: memberUserId,
+      action: "created",
+      title: `Member added to project`,
+    });
+
     res.status(201).json(member);
   } catch (error: any) {
     res.status(400).json({ error: error.message });
@@ -180,13 +229,23 @@ export const removeProjectMember = async (
       return res.status(401).json({ error: "User not found" });
     }
 
-    // ✅ Verify user owns this project (only owner can remove members)
-    const isOwner = await verifyProjectOwnership(userId, id);
-    if (!isOwner) {
-      return res.status(403).json({ error: "Access denied. Only project owner can remove members." });
+    // Only admin can remove members
+    const role = await getUserProjectRole(userId, id);
+    if (role !== "admin") {
+      return res.status(403).json({ error: "Access denied. Only admins can remove members." });
     }
 
     await projectService.removeProjectMember(id, memberUserId);
+
+    logActivity({
+      userId,
+      projectId: id,
+      entityType: "member",
+      entityId: memberUserId,
+      action: "deleted",
+      title: `Member removed from project`,
+    });
+
     res.status(204).send();
   } catch (error: any) {
     res.status(404).json({ error: error.message });
@@ -230,14 +289,75 @@ export const addProjectMemberByEmail = async (
       return res.status(401).json({ error: "User not found" });
     }
 
-    // ✅ Verify user owns this project (only owner can add members)
-    const isOwner = await verifyProjectOwnership(userId, id);
-    if (!isOwner) {
-      return res.status(403).json({ error: "Access denied. Only project owner can add members." });
+    // Only admin can add members
+    const userRole = await getUserProjectRole(userId, id);
+    if (userRole !== "admin") {
+      return res.status(403).json({ error: "Access denied. Only admins can add members." });
     }
 
     const member = await projectService.addProjectMemberByEmail(id, email, role);
+
+    logActivity({
+      userId,
+      projectId: id,
+      entityType: "member",
+      entityId: member.user_id,
+      action: "created",
+      title: `Member added to project`,
+    });
+
     res.status(201).json(member);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+export const getMyMemberships = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).userId;
+
+    if (!userId) {
+      return res.status(401).json({ error: "User not found" });
+    }
+
+    const memberships = await projectService.getMembershipsByUserId(userId);
+    res.json(memberships);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const updateMemberRole = async (
+  req: Request<{ id: string; userId: string }>,
+  res: Response
+) => {
+  try {
+    const { id, userId: memberUserId } = req.params;
+    const { role } = req.body;
+    const userId = (req as any).userId;
+
+    if (!userId) {
+      return res.status(401).json({ error: "User not found" });
+    }
+
+    // Only project owner can update member roles
+    const isOwner = await verifyProjectOwnership(userId, id);
+    if (!isOwner) {
+      return res.status(403).json({ error: "Access denied. Only project owner can update member roles." });
+    }
+
+    const member = await projectService.updateMemberRole(id, memberUserId, role);
+
+    logActivity({
+      userId,
+      projectId: id,
+      entityType: "member",
+      entityId: memberUserId,
+      action: "updated",
+      title: `Member role updated`,
+    });
+
+    res.json(member);
   } catch (error: any) {
     res.status(400).json({ error: error.message });
   }

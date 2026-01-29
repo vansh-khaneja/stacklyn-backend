@@ -1,6 +1,8 @@
 import { Request, Response } from "express";
 import * as commitService from "./commit.service";
-import { verifyCommitAccess, verifyPromptAccess } from "../../utils/authorization.utils";
+import * as promptService from "../prompts/prompt.service";
+import { verifyCommitAccess, verifyPromptAccess, getUserProjectRole } from "../../utils/authorization.utils";
+import { logActivity } from "../activities/activity.service";
 
 export const createCommit = async (req: Request, res: Response) => {
   try {
@@ -11,10 +13,15 @@ export const createCommit = async (req: Request, res: Response) => {
       return res.status(401).json({ error: "User not found" });
     }
 
-    // ✅ Verify user has access to the prompt before creating a commit
-    const hasAccess = await verifyPromptAccess(userId, prompt_id);
-    if (!hasAccess) {
+    const prompt = await promptService.getPromptById(prompt_id);
+
+    // Viewers cannot create commits
+    const role = await getUserProjectRole(userId, prompt.project_id);
+    if (!role) {
       return res.status(403).json({ error: "Access denied. You don't have access to this prompt." });
+    }
+    if (role === "viewer") {
+      return res.status(403).json({ error: "Access denied. Viewers cannot create commits." });
     }
 
     const commit = await commitService.createCommit({
@@ -24,6 +31,16 @@ export const createCommit = async (req: Request, res: Response) => {
       commit_message,
       created_by: userId,
     });
+
+    logActivity({
+      userId,
+      projectId: prompt.project_id,
+      entityType: "commit",
+      entityId: commit.id,
+      action: "created",
+      title: `Updated '${prompt.name}'`,
+    });
+
     res.status(201).json(commit);
   } catch (error: any) {
     res.status(400).json({ error: error.message });
@@ -108,10 +125,16 @@ export const updateCommit = async (
       return res.status(401).json({ error: "User not found" });
     }
 
-    // ✅ Verify user has access to this commit
-    const hasAccess = await verifyCommitAccess(userId, id);
-    if (!hasAccess) {
+    const existingCommit = await commitService.getCommitById(id);
+    const prompt = await promptService.getPromptById(existingCommit.prompt_id);
+
+    // Viewers cannot update commits
+    const role = await getUserProjectRole(userId, prompt.project_id);
+    if (!role) {
       return res.status(403).json({ error: "Access denied" });
+    }
+    if (role === "viewer") {
+      return res.status(403).json({ error: "Access denied. Viewers cannot update commits." });
     }
 
     const commit = await commitService.updateCommit(id, {
@@ -119,6 +142,16 @@ export const updateCommit = async (
       user_query,
       commit_message,
     });
+
+    logActivity({
+      userId,
+      projectId: prompt.project_id,
+      entityType: "commit",
+      entityId: commit.id,
+      action: "updated",
+      title: `Updated '${prompt.name}'`,
+    });
+
     res.json(commit);
   } catch (error: any) {
     res.status(400).json({ error: error.message });
@@ -137,13 +170,29 @@ export const deleteCommit = async (
       return res.status(401).json({ error: "User not found" });
     }
 
-    // ✅ Verify user has access to this commit
-    const hasAccess = await verifyCommitAccess(userId, id);
-    if (!hasAccess) {
+    const commit = await commitService.getCommitById(id);
+    const prompt = await promptService.getPromptById(commit.prompt_id);
+
+    // Viewers cannot delete commits
+    const role = await getUserProjectRole(userId, prompt.project_id);
+    if (!role) {
       return res.status(403).json({ error: "Access denied" });
+    }
+    if (role === "viewer") {
+      return res.status(403).json({ error: "Access denied. Viewers cannot delete commits." });
     }
 
     await commitService.deleteCommit(id);
+
+    logActivity({
+      userId,
+      projectId: prompt.project_id,
+      entityType: "commit",
+      entityId: id,
+      action: "deleted",
+      title: `Deleted commit from '${prompt.name}'`,
+    });
+
     res.status(204).send();
   } catch (error: any) {
     res.status(404).json({ error: error.message });
@@ -163,10 +212,16 @@ export const addTagToCommit = async (
       return res.status(401).json({ error: "User not found" });
     }
 
-    // ✅ Verify user has access to this commit
-    const hasAccess = await verifyCommitAccess(userId, id);
-    if (!hasAccess) {
+    const commit = await commitService.getCommitById(id);
+    const prompt = await promptService.getPromptById(commit.prompt_id);
+
+    // Viewers cannot add tags
+    const role = await getUserProjectRole(userId, prompt.project_id);
+    if (!role) {
       return res.status(403).json({ error: "Access denied" });
+    }
+    if (role === "viewer") {
+      return res.status(403).json({ error: "Access denied. Viewers cannot add tags." });
     }
 
     const commitTag = await commitService.addTagToCommit(id, tagName);
@@ -188,10 +243,16 @@ export const removeTagFromCommit = async (
       return res.status(401).json({ error: "User not found" });
     }
 
-    // ✅ Verify user has access to this commit
-    const hasAccess = await verifyCommitAccess(userId, id);
-    if (!hasAccess) {
+    const commit = await commitService.getCommitById(id);
+    const prompt = await promptService.getPromptById(commit.prompt_id);
+
+    // Viewers cannot remove tags
+    const role = await getUserProjectRole(userId, prompt.project_id);
+    if (!role) {
       return res.status(403).json({ error: "Access denied" });
+    }
+    if (role === "viewer") {
+      return res.status(403).json({ error: "Access denied. Viewers cannot remove tags." });
     }
 
     await commitService.removeTagFromCommit(id, tagName);

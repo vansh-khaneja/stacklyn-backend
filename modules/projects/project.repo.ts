@@ -5,9 +5,20 @@ export const createProject = async (data: {
   description?: string;
   created_by: string;
 }) => {
-  return prisma.projects.create({
+  const project = await prisma.projects.create({
     data,
   });
+
+  // Add creator to project_users as admin
+  await prisma.project_users.create({
+    data: {
+      project_id: project.id,
+      user_id: data.created_by,
+      role: "admin",
+    },
+  });
+
+  return project;
 };
 
 export const getProjectById = async (id: string) => {
@@ -17,7 +28,7 @@ export const getProjectById = async (id: string) => {
       project_users: {
         include: {
           users: {
-            select: { id: true, email: true, name: true },
+            select: { id: true, email: true, name: true, image_url: true },
           },
         },
       },
@@ -31,7 +42,7 @@ export const getAllProjects = async () => {
       project_users: {
         include: {
           users: {
-            select: { id: true, email: true, name: true },
+            select: { id: true, email: true, name: true, image_url: true },
           },
         },
       },
@@ -60,7 +71,7 @@ export const getProjectMembers = async (projectId: string) => {
     where: { project_id: projectId },
     include: {
       users: {
-        select: { id: true, email: true, name: true },
+        select: { id: true, email: true, name: true, image_url: true },
       },
     },
   });
@@ -94,10 +105,40 @@ export const removeProjectMember = async (projectId: string, userId: string) => 
 export const getProjectsByUserId = async (userId: string) => {
   return prisma.projects.findMany({
     where: {
-      OR: [
-        { created_by: userId },
-        { project_users: { some: { user_id: userId } } },
-      ],
+      created_by: userId,
+    },
+  });
+};
+
+export const getMembershipsByUserId = async (userId: string) => {
+  return prisma.project_users.findMany({
+    where: { user_id: userId },
+    include: {
+      projects: true,
+      users: {
+        select: { id: true, email: true, name: true, image_url: true },
+      },
+    },
+  });
+};
+
+export const updateMemberRole = async (
+  projectId: string,
+  userId: string,
+  role: string
+) => {
+  return prisma.project_users.update({
+    where: {
+      project_id_user_id: {
+        project_id: projectId,
+        user_id: userId,
+      },
+    },
+    data: { role },
+    include: {
+      users: {
+        select: { id: true, email: true, name: true, image_url: true },
+      },
     },
   });
 };

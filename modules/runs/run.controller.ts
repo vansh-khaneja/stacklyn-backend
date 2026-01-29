@@ -1,5 +1,9 @@
 import { Request, Response } from "express";
 import * as runService from "./run.service";
+import * as commitService from "../commits/commit.service";
+import * as promptService from "../prompts/prompt.service";
+import { logActivity } from "../activities/activity.service";
+import { getUserProjectRole } from "../../utils/authorization.utils";
 
 export const createRun = async (req: Request, res: Response) => {
   try {
@@ -122,7 +126,37 @@ export const getRunsByStatus = async (
 export const executeCommit = async (req: Request, res: Response) => {
   try {
     const { commit_id, model } = req.body;
+    const userId = (req as any).userId;
+
+    if (!userId) {
+      return res.status(401).json({ error: "User not found" });
+    }
+
+    const commit = await commitService.getCommitById(commit_id);
+    const prompt = await promptService.getPromptById(commit.prompt_id);
+
+    // Viewers cannot execute runs
+    const role = await getUserProjectRole(userId, prompt.project_id);
+    if (!role) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+    if (role === "viewer") {
+      return res.status(403).json({ error: "Access denied. Viewers cannot execute runs." });
+    }
+
     const run = await runService.executeCommit(commit_id, model);
+
+    logActivity({
+      userId,
+      projectId: prompt.project_id,
+      entityType: "run",
+      entityId: run.id,
+      action: run.status === "success" ? "executed" : "failed",
+      title: run.status === "success"
+        ? `New evaluation run on '${prompt.name}'`
+        : `Failed generation in '${prompt.name}'`,
+    });
+
     res.status(201).json(run);
   } catch (error: any) {
     res.status(400).json({ error: error.message });

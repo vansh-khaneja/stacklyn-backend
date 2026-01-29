@@ -22,6 +22,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
                 const user = await clerkClient.users.getUser(clerkUserId);
                 const email = user.emailAddresses.find(e => e.id === user.primaryEmailAddressId)?.emailAddress;
                 const name = `${user.firstName || ''} ${user.lastName || ''}`.trim() || email;
+                const imageUrl = user.imageUrl || null;
 
                 if (email) {
                     const imageUrl = user.imageUrl;
