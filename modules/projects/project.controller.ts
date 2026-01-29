@@ -3,6 +3,7 @@ import * as projectService from "./project.service";
 import {
   verifyProjectAccess,
   verifyProjectOwnership,
+  getUserProjectRole,
 } from "../../utils/authorization.utils";
 import { logActivity } from "../activities/activity.service";
 
@@ -167,7 +168,14 @@ export const getProjectMembers = async (
     }
 
     const members = await projectService.getProjectMembers(id);
-    res.json(members);
+
+    // Add isCurrentUser flag
+    const membersWithFlag = members.map((member: any) => ({
+      ...member,
+      isCurrentUser: member.user_id === userId,
+    }));
+
+    res.json(membersWithFlag);
   } catch (error: any) {
     res.status(404).json({ error: error.message });
   }
@@ -186,10 +194,10 @@ export const addProjectMember = async (
       return res.status(401).json({ error: "User not found" });
     }
 
-    // ✅ Verify user owns this project (only owner can add members)
-    const isOwner = await verifyProjectOwnership(userId, id);
-    if (!isOwner) {
-      return res.status(403).json({ error: "Access denied. Only project owner can add members." });
+    // Only admin can add members
+    const userRole = await getUserProjectRole(userId, id);
+    if (userRole !== "admin") {
+      return res.status(403).json({ error: "Access denied. Only admins can add members." });
     }
 
     const member = await projectService.addProjectMember(id, memberUserId, role);
@@ -221,10 +229,10 @@ export const removeProjectMember = async (
       return res.status(401).json({ error: "User not found" });
     }
 
-    // ✅ Verify user owns this project (only owner can remove members)
-    const isOwner = await verifyProjectOwnership(userId, id);
-    if (!isOwner) {
-      return res.status(403).json({ error: "Access denied. Only project owner can remove members." });
+    // Only admin can remove members
+    const role = await getUserProjectRole(userId, id);
+    if (role !== "admin") {
+      return res.status(403).json({ error: "Access denied. Only admins can remove members." });
     }
 
     await projectService.removeProjectMember(id, memberUserId);
@@ -281,10 +289,10 @@ export const addProjectMemberByEmail = async (
       return res.status(401).json({ error: "User not found" });
     }
 
-    // ✅ Verify user owns this project (only owner can add members)
-    const isOwner = await verifyProjectOwnership(userId, id);
-    if (!isOwner) {
-      return res.status(403).json({ error: "Access denied. Only project owner can add members." });
+    // Only admin can add members
+    const userRole = await getUserProjectRole(userId, id);
+    if (userRole !== "admin") {
+      return res.status(403).json({ error: "Access denied. Only admins can add members." });
     }
 
     const member = await projectService.addProjectMemberByEmail(id, email, role);

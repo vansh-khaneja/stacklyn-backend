@@ -3,6 +3,7 @@ import * as promptService from "./prompt.service";
 import {
   verifyPromptAccess,
   verifyProjectAccess,
+  getUserProjectRole,
 } from "../../utils/authorization.utils";
 import { logActivity } from "../activities/activity.service";
 
@@ -15,10 +16,13 @@ export const createPrompt = async (req: Request, res: Response) => {
       return res.status(401).json({ error: "User not found" });
     }
 
-    // ✅ Verify user has access to the project before creating a prompt
-    const hasAccess = await verifyProjectAccess(userId, project_id);
-    if (!hasAccess) {
+    // Viewers cannot create prompts
+    const role = await getUserProjectRole(userId, project_id);
+    if (!role) {
       return res.status(403).json({ error: "Access denied. You don't have access to this project." });
+    }
+    if (role === "viewer") {
+      return res.status(403).json({ error: "Access denied. Viewers cannot create prompts." });
     }
 
     const prompt = await promptService.createPrompt({
@@ -120,10 +124,16 @@ export const updatePrompt = async (
       return res.status(401).json({ error: "User not found" });
     }
 
-    // ✅ Verify user has access to this prompt
-    const hasAccess = await verifyPromptAccess(userId, id);
-    if (!hasAccess) {
+    // Get prompt to find project_id
+    const existingPrompt = await promptService.getPromptById(id);
+
+    // Viewers cannot update prompts
+    const role = await getUserProjectRole(userId, existingPrompt.project_id);
+    if (!role) {
       return res.status(403).json({ error: "Access denied" });
+    }
+    if (role === "viewer") {
+      return res.status(403).json({ error: "Access denied. Viewers cannot update prompts." });
     }
 
     const prompt = await promptService.updatePrompt(id, { name });
@@ -155,13 +165,18 @@ export const deletePrompt = async (
       return res.status(401).json({ error: "User not found" });
     }
 
-    // ✅ Verify user has access to this prompt
-    const hasAccess = await verifyPromptAccess(userId, id);
-    if (!hasAccess) {
+    // Get prompt to find project_id
+    const prompt = await promptService.getPromptById(id);
+
+    // Viewers cannot delete prompts
+    const role = await getUserProjectRole(userId, prompt.project_id);
+    if (!role) {
       return res.status(403).json({ error: "Access denied" });
     }
+    if (role === "viewer") {
+      return res.status(403).json({ error: "Access denied. Viewers cannot delete prompts." });
+    }
 
-    const prompt = await promptService.getPromptById(id);
     await promptService.deletePrompt(id);
 
     logActivity({

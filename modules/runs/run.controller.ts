@@ -3,6 +3,7 @@ import * as runService from "./run.service";
 import * as commitService from "../commits/commit.service";
 import * as promptService from "../prompts/prompt.service";
 import { logActivity } from "../activities/activity.service";
+import { getUserProjectRole } from "../../utils/authorization.utils";
 
 export const createRun = async (req: Request, res: Response) => {
   try {
@@ -127,8 +128,22 @@ export const executeCommit = async (req: Request, res: Response) => {
     const { commit_id, model } = req.body;
     const userId = (req as any).userId;
 
+    if (!userId) {
+      return res.status(401).json({ error: "User not found" });
+    }
+
     const commit = await commitService.getCommitById(commit_id);
     const prompt = await promptService.getPromptById(commit.prompt_id);
+
+    // Viewers cannot execute runs
+    const role = await getUserProjectRole(userId, prompt.project_id);
+    if (!role) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+    if (role === "viewer") {
+      return res.status(403).json({ error: "Access denied. Viewers cannot execute runs." });
+    }
+
     const run = await runService.executeCommit(commit_id, model);
 
     logActivity({
