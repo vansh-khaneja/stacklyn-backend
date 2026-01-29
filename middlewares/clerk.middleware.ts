@@ -1,4 +1,5 @@
 import { ClerkExpressRequireAuth, ClerkExpressWithAuth, StrictAuthProp, WithAuthProp, clerkClient } from '@clerk/clerk-sdk-node';
+// Syncing image_url from Clerk to DB
 import { Request, Response, NextFunction } from 'express';
 import prisma from '../config/db';
 
@@ -24,6 +25,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
                 const imageUrl = user.imageUrl || null;
 
                 if (email) {
+                    const imageUrl = user.imageUrl;
                     let dbUser = await prisma.users.findUnique({
                         where: { email }
                     });
@@ -33,15 +35,20 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
                             data: {
                                 email,
                                 name: name || 'User',
-                                image_url: imageUrl,
+                                image_url: imageUrl
                             }
                         });
                         console.log(`✅ [AUTH] New user created: ${email}`);
-                    } else if (dbUser.image_url !== imageUrl) {
+                    } else if (dbUser.image_url !== imageUrl || dbUser.name !== name) {
+                        // Keep profile in sync
                         dbUser = await prisma.users.update({
-                            where: { email },
-                            data: { image_url: imageUrl }
+                            where: { id: dbUser.id },
+                            data: {
+                                name: name || dbUser.name,
+                                image_url: imageUrl
+                            }
                         });
+                        console.log(`🔄 [AUTH] User profile synced: ${email}`);
                     }
 
                     // Attach user data to request

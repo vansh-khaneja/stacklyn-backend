@@ -20,7 +20,7 @@ export const getUserByEmail = async (email: string) => {
 
 export const updateUser = async (
   id: string,
-  data: { email?: string; name?: string }
+  data: { email?: string; name?: string; image_url?: string }
 ) => {
   return prisma.users.update({
     where: { id },
