@@ -8,69 +8,37 @@
       "input": 0.05,
       "output": 0.08
     },
-    "llama-3.1-70b-versatile": {
-      "input": 0.59,
-      "output": 0.79
+    "gpt-4.1-2025-04-14": {
+      "input": 2.00,
+      "output": 8.00
     },
-    "llama-3.2-1b-preview": {
-      "input": 0.04,
-      "output": 0.04
-    },
-    "llama-3.2-3b-preview": {
-      "input": 0.06,
-      "output": 0.06
-    },
-    "llama-3.2-11b-vision-preview": {
-      "input": 0.18,
-      "output": 0.18
-    },
-    "llama-3.2-90b-vision-preview": {
-      "input": 0.90,
-      "output": 0.90
-    },
-    "mixtral-8x7b-32768": {
-      "input": 0.24,
-      "output": 0.24
-    },
-    "gemma2-9b-it": {
-      "input": 0.20,
-      "output": 0.20
-    },
-    "gpt-4": {
-      "input": 30.00,
-      "output": 60.00
-    },
-    "gpt-4-turbo": {
-      "input": 10.00,
-      "output": 30.00
-    },
-    "gpt-4o": {
-      "input": 2.50,
-      "output": 10.00
-    },
-    "gpt-4o-mini": {
+    "gpt-4o-mini-2024-07-18": {
       "input": 0.15,
       "output": 0.60
     },
-    "gpt-3.5-turbo": {
-      "input": 0.50,
-      "output": 1.50
-    },
-    "claude-3-opus": {
-      "input": 15.00,
-      "output": 75.00
-    },
-    "claude-3-sonnet": {
+    "claude-3-5-sonnet-20241022": {
       "input": 3.00,
       "output": 15.00
     },
-    "claude-3-haiku": {
+    "claude-3-5-haiku-20241022": {
       "input": 0.25,
       "output": 1.25
     },
-    "claude-3.5-sonnet": {
-      "input": 3.00,
-      "output": 15.00
+    "claude-3-opus-20240229": {
+      "input": 15.00,
+      "output": 75.00
+    },
+    "gemini-1.5-pro": {
+      "input": 1.25,
+      "output": 5.00
+    },
+    "gemini-1.5-flash": {
+      "input": 0.075,
+      "output": 0.30
+    },
+    "gemini-2.0-flash-exp": {
+      "input": 0.075,
+      "output": 0.30
     }
   },
   "default": {

@@ -1,0 +1,50 @@
+{
+  "models": {
+    "llama-3.1-8b-instant": {
+      "name": "Llama 3.1 8B",
+      "icon": "meta"
+    },
+    "llama-3.3-70b-versatile": {
+      "name": "Llama 3.3 70B",
+      "icon": "meta"
+    },
+    "gpt-4.1-2025-04-14": {
+      "name": "GPT 4.1",
+      "icon": "openai"
+    },
+    "gpt-4o-mini-2024-07-18": {
+      "name": "GPT 4o mini",
+      "icon": "openai"
+    },
+    "claude-3-5-sonnet-20241022": {
+      "name": "Claude 3.5 Sonnet",
+      "icon": "anthropic"
+    },
+    "claude-3-5-haiku-20241022": {
+      "name": "Claude 3.5 Haiku",
+      "icon": "anthropic"
+    },
+    "claude-3-opus-20240229": {
+      "name": "Claude 3 Opus",
+      "icon": "anthropic"
+    },
+    "gemini-1.5-pro": {
+      "name": "Gemini 1.5 Pro",
+      "icon": "google"
+    },
+    "gemini-1.5-flash": {
+      "name": "Gemini 1.5 Flash",
+      "icon": "google"
+    },
+    "gemini-2.0-flash-exp": {
+      "name": "Gemini 2.0 Flash",
+      "icon": "google"
+    }
+  },
+  "icons": {
+    "meta": "/icons/meta.svg",
+    "openai": "/icons/openai.svg",
+    "anthropic": "/icons/anthropic.svg",
+    "google": "/icons/gemini.svg"
+  }
+}

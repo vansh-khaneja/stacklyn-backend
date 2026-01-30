@@ -5,14 +5,23 @@ import { LLMProvider, LLMRequest, LLMResponse } from "./types";
 import { GroqProvider, GROQ_MODELS } from "./groq.provider";
 import { OpenAIProvider, OPENAI_MODELS } from "./openai.provider";
 import { AnthropicProvider, ANTHROPIC_MODELS } from "./anthropic.provider";
+import { GeminiProvider, GEMINI_MODELS } from "./gemini.provider";
+import modelMetadata from "../../config/model-metadata.json";
 
 export { LLMRequest, LLMResponse, LLMProvider } from "./types";
+
+interface ModelInfo {
+  id: string;
+  name: string;
+  icon: string;
+}
 
 // Provider registry
 const providers: Record<string, () => LLMProvider> = {
   groq: () => new GroqProvider(),
   openai: () => new OpenAIProvider(),
   anthropic: () => new AnthropicProvider(),
+  gemini: () => new GeminiProvider(),
 };
 
 // Model to provider mapping
@@ -31,6 +40,11 @@ OPENAI_MODELS.forEach((model) => {
 // Register Anthropic models
 ANTHROPIC_MODELS.forEach((model) => {
   modelToProvider[model] = "anthropic";
+});
+
+// Register Gemini models
+GEMINI_MODELS.forEach((model) => {
+  modelToProvider[model] = "gemini";
 });
 
 // Get provider by name
@@ -57,12 +71,28 @@ export async function callLLM(request: LLMRequest): Promise<LLMResponse> {
   return provider.call(request);
 }
 
-// List all available models
-export function getAvailableModels(): Record<string, string[]> {
+// Helper to get model info with name and icon
+function getModelInfo(modelId: string): ModelInfo {
+  const models = modelMetadata.models as Record<string, { name: string; icon: string }>;
+  const icons = modelMetadata.icons as Record<string, string>;
+
+  const meta = models[modelId] || { name: modelId, icon: "default" };
+  const iconUrl = icons[meta.icon] || "";
+
   return {
-    groq: [...GROQ_MODELS],
-    openai: [...OPENAI_MODELS],
-    anthropic: [...ANTHROPIC_MODELS],
+    id: modelId,
+    name: meta.name,
+    icon: iconUrl,
+  };
+}
+
+// List all available models with metadata
+export function getAvailableModels(): Record<string, ModelInfo[]> {
+  return {
+    groq: GROQ_MODELS.map(getModelInfo),
+    openai: OPENAI_MODELS.map(getModelInfo),
+    anthropic: ANTHROPIC_MODELS.map(getModelInfo),
+    gemini: GEMINI_MODELS.map(getModelInfo),
   };
 }
 
