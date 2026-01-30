@@ -12,6 +12,7 @@ import tagRoutes from "./modules/tags/tag.routes";
 import searchRoutes from "./modules/search/search.routes";
 import activityRoutes from "./modules/activities/activity.routes";
 import chatRoutes from "./modules/chat/chat.routes";
+import tokenUsageRoutes from "./modules/token-usage/token-usage.routes";
 
 const app = express();
 
@@ -39,6 +40,7 @@ app.use("/api/tags", tagRoutes);
 app.use("/api/search", searchRoutes);
 app.use("/api/activities", activityRoutes);
 app.use("/api/projects/:projectId/chat", chatRoutes);
+app.use("/api/token-usage", tokenUsageRoutes);
 
 // Error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

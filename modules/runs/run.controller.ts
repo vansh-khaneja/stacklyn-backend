@@ -125,7 +125,8 @@ export const getRunsByStatus = async (
 // Execute a commit with an LLM
 export const executeCommit = async (req: Request, res: Response) => {
   try {
-    const { commit_id, model } = req.body;
+    console.log("Execute request body:", req.body);
+    const { commit_id, model, system_prompt, user_query } = req.body;
     const userId = (req as any).userId;
 
     if (!userId) {
@@ -144,7 +145,7 @@ export const executeCommit = async (req: Request, res: Response) => {
       return res.status(403).json({ error: "Access denied. Viewers cannot execute runs." });
     }
 
-    const run = await runService.executeCommit(commit_id, model);
+    const run = await runService.executeCommit(commit_id, model, system_prompt, user_query, userId);
 
     logActivity({
       userId,

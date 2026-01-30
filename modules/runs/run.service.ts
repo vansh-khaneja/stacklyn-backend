@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import * as runRepo from "./run.repo";
 import * as commitService from "../commits/commit.service";
+import * as tokenUsageService from "../token-usage/token-usage.service";
 import { callLLM, DEFAULT_MODEL } from "../../services/llm";
 
 export const createRun = async (data: {
@@ -59,18 +60,44 @@ export const getRunsByStatus = async (status: string) => {
 // Execute a commit with an LLM and save the run
 export const executeCommit = async (
   commitId: string,
-  model: string = DEFAULT_MODEL
+  model: string = DEFAULT_MODEL,
+  systemPromptOverride?: string,
+  userQueryOverride?: string,
+  userId?: string
 ) => {
   // Get the commit
   const commit = await commitService.getCommitById(commitId);
 
+  // Use overrides if provided (these have variables already substituted), otherwise use commit values
+  const system_prompt = systemPromptOverride ?? commit.system_prompt;
+  const user_query = userQueryOverride ?? commit.user_query;
+
   try {
     // Call LLM
-    const llmResponse = await callLLM({
-      system_prompt: commit.system_prompt,
-      user_query: commit.user_query,
+    console.log("Sending to model:", {
+      system_prompt,
+      user_query,
       model,
     });
+    const llmResponse = await callLLM({
+      system_prompt,
+      user_query,
+      model,
+    });
+    console.log("Received from model:", llmResponse);
+
+    // Log token usage (non-blocking)
+    tokenUsageService.logTokenUsage({
+      user_id: userId,
+      model_name: llmResponse.model,
+      input_tokens: llmResponse.token_usage?.prompt_tokens || 0,
+      output_tokens: llmResponse.token_usage?.completion_tokens || 0,
+      latency_ms: llmResponse.latency_ms,
+      system_prompt,
+      user_query,
+      response: llmResponse.content,
+      status: "success",
+    }).catch(err => console.error("Failed to log token usage:", err));
 
     // Save the run
     const run = await runRepo.createRun({
@@ -82,8 +109,20 @@ export const executeCommit = async (
       status: "success",
     });
 
-    return run;
+    return { ...run, system_prompt, user_query };
   } catch (error: any) {
+    // Log failed token usage (non-blocking)
+    tokenUsageService.logTokenUsage({
+      user_id: userId,
+      model_name: model,
+      input_tokens: 0,
+      output_tokens: 0,
+      system_prompt,
+      user_query,
+      response: error.message,
+      status: "failed",
+    }).catch(err => console.error("Failed to log token usage:", err));
+
     // Save failed run
     const run = await runRepo.createRun({
       commit_id: commitId,
@@ -92,7 +131,7 @@ export const executeCommit = async (
       status: "failed",
     });
 
-    return run;
+    return { ...run, system_prompt, user_query };
   }
 };
 
