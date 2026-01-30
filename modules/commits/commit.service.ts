@@ -1,5 +1,6 @@
 import * as commitRepo from "./commit.repo";
 import { diffWords } from "diff";
+import { callLLM } from "../../services/llm";
 
 export const createCommit = async (data: {
   prompt_id: string;
@@ -8,7 +9,19 @@ export const createCommit = async (data: {
   commit_message?: string;
   created_by: string;
 }) => {
-  return commitRepo.createCommit(data);
+  // Check if this is the first commit for this prompt
+  const existingCommits = await commitRepo.getCommitsByPromptId(data.prompt_id);
+  const isFirstCommit = existingCommits.length === 0;
+
+  // Create the commit
+  const commit = await commitRepo.createCommit(data);
+
+  // If first commit, automatically add "main" tag
+  if (isFirstCommit) {
+    await commitRepo.addTagToCommit(commit.id, "main");
+  }
+
+  return commit;
 };
 
 export const getCommitById = async (id: string) => {
@@ -23,8 +36,26 @@ export const getAllCommits = async () => {
   return commitRepo.getAllCommits();
 };
 
-export const getCommitsByPromptId = async (promptId: string) => {
-  return commitRepo.getCommitsByPromptId(promptId);
+export const getCommitsByPromptId = async (
+  promptId: string,
+  limit: number = 9,
+  offset: number = 0
+) => {
+  const { commits, total, prodCommit } = await commitRepo.getCommitsByPromptId(
+    promptId,
+    limit,
+    offset
+  );
+
+  return {
+    commits,
+    prodCommit,
+    pagination: {
+      limit,
+      offset,
+      total,
+    },
+  };
 };
 
 export const updateCommit = async (
@@ -56,6 +87,108 @@ export const removeTagFromCommit = async (commitId: string, tagId: string) => {
 
 export const getCommitsByUserId = async (userId: string) => {
   return commitRepo.getCommitsByUserId(userId);
+};
+
+// Helper to get next version number
+const getNextVersion = (existingTags: string[]): string => {
+  // Filter version tags (v*.*.*)
+  const versionRegex = /^v(\d+)\.(\d+)\.(\d+)$/;
+  const versions = existingTags
+    .map((tag) => {
+      const match = tag.match(versionRegex);
+      if (match) {
+        return {
+          major: parseInt(match[1]),
+          minor: parseInt(match[2]),
+          patch: parseInt(match[3]),
+        };
+      }
+      return null;
+    })
+    .filter((v) => v !== null);
+
+  if (versions.length === 0) {
+    return "v1.0.0"; // First version
+  }
+
+  // Find the highest version
+  const highest = versions.reduce((max, v) => {
+    if (v.major > max.major) return v;
+    if (v.major === max.major && v.minor > max.minor) return v;
+    if (v.major === max.major && v.minor === max.minor && v.patch > max.patch) return v;
+    return max;
+  });
+
+  // Increment patch version
+  return `v${highest.major}.${highest.minor}.${highest.patch + 1}`;
+};
+
+// Get all versioned commits (production releases) for a prompt
+export const getProductionReleases = async (
+  promptId: string,
+  limit: number = 9,
+  offset: number = 0
+) => {
+  const { commits, total } = await commitRepo.getVersionedCommits(promptId, limit, offset);
+
+  // Parse version tags and sort by version number (descending)
+  const versionRegex = /^v(\d+)\.(\d+)\.(\d+)$/;
+
+  const releases = commits
+    .map((commit) => {
+      const versionTag = commit.commit_tags.find((t) => versionRegex.test(t.tag_name));
+      const isProd = commit.commit_tags.some((t) => t.tag_name === "PROD");
+
+      return {
+        id: commit.id,
+        commit_message: commit.commit_message,
+        created_at: commit.created_at,
+        version: versionTag?.tag_name || null,
+        is_current_prod: isProd,
+        tags: commit.commit_tags.map((t) => t.tag_name),
+      };
+    })
+    .sort((a, b) => {
+      // Sort by version descending
+      const matchA = a.version?.match(versionRegex);
+      const matchB = b.version?.match(versionRegex);
+      if (!matchA || !matchB) return 0;
+
+      const [, majA, minA, patA] = matchA.map(Number);
+      const [, majB, minB, patB] = matchB.map(Number);
+
+      if (majB !== majA) return majB - majA;
+      if (minB !== minA) return minB - minA;
+      return patB - patA;
+    });
+
+  return {
+    releases,
+    pagination: {
+      limit,
+      offset,
+      total,
+    },
+  };
+};
+
+// Push a commit to production - moves PROD tag and adds version tag
+export const pushToProd = async (commitId: string) => {
+  const commit = await getCommitById(commitId);
+
+  // Get all existing tags for this prompt to determine next version
+  const existingTags = await commitRepo.getTagsForPrompt(commit.prompt_id);
+  const nextVersion = getNextVersion(existingTags);
+
+  // Remove PROD tag from all commits of this prompt
+  await commitRepo.removeTagFromPromptCommits(commit.prompt_id, "PROD");
+
+  // Add PROD tag and version tag to the selected commit
+  await commitRepo.addTagToCommit(commitId, "PROD");
+  await commitRepo.addTagToCommit(commitId, nextVersion);
+
+  // Return the updated commit
+  return getCommitById(commitId);
 };
 
 export const compareCommits = async (commitId1: string, commitId2: string) => {
@@ -136,4 +269,43 @@ export const compareCommits = async (commitId1: string, commitId2: string) => {
     },
     diff: mergedDiff,
   };
+};
+
+// Generate commit message based on diff between old and new system prompts
+export const generateCommitMessage = async (
+  oldSystemPrompt: string,
+  newSystemPrompt: string
+) => {
+  const systemPrompt = `You are a commit message generator using conventional commits format.
+
+Rules:
+- Use format: <type>: <description>
+- Types: feat (new feature), fix (bug fix), chore (maintenance), refactor, docs, style, perf
+- Description must be 5-6 words MAX
+- Use lowercase
+- No period at end
+- No quotes
+
+Examples:
+- feat: add error handling for api
+- fix: resolve timeout in requests
+- chore: update system prompt tone
+- refactor: simplify response formatting
+
+Only respond with the commit message, nothing else.`;
+
+  const userQuery = `Old:
+${oldSystemPrompt}
+
+New:
+${newSystemPrompt}`;
+
+  const response = await callLLM({
+    model: "llama-3.1-8b-instant",
+    system_prompt: systemPrompt,
+    user_query: userQuery,
+  });
+
+  // Clean up the response
+  return response.content.trim().replace(/^["']|["']$/g, "").toLowerCase();
 };

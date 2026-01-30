@@ -3,9 +3,8 @@ import { LLMProvider, LLMRequest, LLMResponse } from "./types";
 const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models";
 
 export const GEMINI_MODELS = [
-  "gemini-1.5-pro",
-  "gemini-1.5-flash",
-  "gemini-2.0-flash-exp",
+  "gemini-2.0-flash",
+  "gemini-2.5-flash-lite",
 ] as const;
 
 export type GeminiModel = (typeof GEMINI_MODELS)[number];

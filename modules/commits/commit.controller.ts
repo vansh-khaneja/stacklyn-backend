@@ -94,6 +94,8 @@ export const getCommitsByPromptId = async (
   try {
     const { promptId } = req.params;
     const userId = (req as any).userId;
+    const limit = parseInt(req.query.limit as string) || 9;
+    const offset = parseInt(req.query.offset as string) || 0;
 
     if (!userId) {
       return res.status(401).json({ error: "User not found" });
@@ -105,8 +107,8 @@ export const getCommitsByPromptId = async (
       return res.status(403).json({ error: "Access denied" });
     }
 
-    const commits = await commitService.getCommitsByPromptId(promptId);
-    res.json(commits);
+    const result = await commitService.getCommitsByPromptId(promptId, limit, offset);
+    res.json(result);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -310,5 +312,109 @@ export const compareCommits = async (
     res.json(comparison);
   } catch (error: any) {
     res.status(404).json({ error: error.message });
+  }
+};
+
+export const pushToProd = async (
+  req: Request<{ id: string }>,
+  res: Response
+) => {
+  try {
+    const { id } = req.params;
+    const userId = (req as any).userId;
+
+    if (!userId) {
+      return res.status(401).json({ error: "User not found" });
+    }
+
+    const commit = await commitService.getCommitById(id);
+    const prompt = await promptService.getPromptById(commit.prompt_id);
+
+    // Only admins and members can push to prod
+    const role = await getUserProjectRole(userId, prompt.project_id);
+    if (!role) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+    if (role === "viewer") {
+      return res.status(403).json({ error: "Access denied. Viewers cannot push to production." });
+    }
+
+    const updatedCommit = await commitService.pushToProd(id);
+
+    logActivity({
+      userId,
+      projectId: prompt.project_id,
+      entityType: "commit",
+      entityId: id,
+      action: "updated",
+      title: `Pushed '${prompt.name}' to production`,
+    });
+
+    res.json(updatedCommit);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+export const getProductionReleases = async (
+  req: Request<{ promptId: string }>,
+  res: Response
+) => {
+  try {
+    const { promptId } = req.params;
+    const userId = (req as any).userId;
+    const limit = parseInt(req.query.limit as string) || 9;
+    const offset = parseInt(req.query.offset as string) || 0;
+
+    if (!userId) {
+      return res.status(401).json({ error: "User not found" });
+    }
+
+    // Verify user has access to the prompt
+    const hasAccess = await verifyPromptAccess(userId, promptId);
+    if (!hasAccess) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    const result = await commitService.getProductionReleases(promptId, limit, offset);
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const generateCommitMessage = async (req: Request, res: Response) => {
+  try {
+    console.log("[generateCommitMessage] Request body:", JSON.stringify(req.body, null, 2));
+    console.log("[generateCommitMessage] Body keys:", Object.keys(req.body));
+
+    // Accept both camelCase and snake_case
+    const oldSystemPrompt = req.body.oldSystemPrompt || req.body.old_system_prompt;
+    const newSystemPrompt = req.body.newSystemPrompt || req.body.new_system_prompt;
+    const userId = (req as any).userId;
+
+    console.log("[generateCommitMessage] oldSystemPrompt:", oldSystemPrompt ? `${oldSystemPrompt.substring(0, 50)}...` : "MISSING");
+    console.log("[generateCommitMessage] newSystemPrompt:", newSystemPrompt ? `${newSystemPrompt.substring(0, 50)}...` : "MISSING");
+
+    if (!userId) {
+      return res.status(401).json({ error: "User not found" });
+    }
+
+    if (!oldSystemPrompt || !newSystemPrompt) {
+      console.log("[generateCommitMessage] Validation failed - missing prompts");
+      return res.status(400).json({ error: "Both oldSystemPrompt and newSystemPrompt are required" });
+    }
+
+    console.log("[generateCommitMessage] Calling LLM...");
+    const commitMessage = await commitService.generateCommitMessage(
+      oldSystemPrompt,
+      newSystemPrompt
+    );
+    console.log("[generateCommitMessage] Generated message:", commitMessage);
+
+    res.json({ commitMessage });
+  } catch (error: any) {
+    console.error("[generateCommitMessage] Error:", error);
+    res.status(500).json({ error: error.message });
   }
 };
