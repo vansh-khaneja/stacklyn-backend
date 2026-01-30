@@ -16,7 +16,17 @@ import tokenUsageRoutes from "./modules/token-usage/token-usage.routes";
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin: [
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'https://api.stacklyn.vanshkhaneja.com',
+    'https://stacklyn.vanshkhaneja.com',
+    'https://stacklyn.yashverma.site',
+    'https://stacklyn-app.vercel.app',
+  ],
+  credentials: true,
+}));
 app.use(express.json());
 app.use(requestLogger);
 
