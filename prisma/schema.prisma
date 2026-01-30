@@ -55,6 +55,7 @@ model projects {
   users         users           @relation(fields: [created_by], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_projects_created_by")
   prompts       prompts[]
   activities    activities[]
+  chat_messages chat_messages[]
 
   @@index([created_by])
   @@index([created_at(sort: Desc)])
@@ -108,15 +109,17 @@ model scores {
 }
 
 model users {
-  id            String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email         String          @unique
-  name          String?
-  image_url     String?
-  created_at    DateTime?       @default(now()) @db.Timestamptz(6)
-  password      String?
-  project_users project_users[]
-  projects      projects[]
-  activities    activities[]
+  id                String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email             String              @unique
+  name              String?
+  image_url         String?
+  created_at        DateTime?           @default(now()) @db.Timestamptz(6)
+  password          String?
+  project_users     project_users[]
+  projects          projects[]
+  activities        activities[]
+  chat_messages     chat_messages[]
+  message_reactions message_reactions[]
 }
 
 model activities {
@@ -155,4 +158,40 @@ enum activity_action {
   deleted
   executed
   failed
+}
+
+model chat_messages {
+  id                String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  project_id        String              @db.Uuid
+  user_id           String?             @db.Uuid
+  content           String
+  parent_message_id String?             @db.Uuid
+  created_at        DateTime?           @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime?           @updatedAt
+
+  project           projects            @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_chat_messages_project")
+  user              users?              @relation(fields: [user_id], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "fk_chat_messages_user")
+  parent_message    chat_messages?      @relation("MessageReplies", fields: [parent_message_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_chat_messages_parent")
+  replies           chat_messages[]     @relation("MessageReplies")
+  reactions         message_reactions[]
+
+  @@index([project_id])
+  @@index([user_id])
+  @@index([parent_message_id])
+  @@index([created_at(sort: Desc)])
+}
+
+model message_reactions {
+  id         String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  message_id String        @db.Uuid
+  user_id    String        @db.Uuid
+  emoji      String        // The emoji character (e.g., "👍", "❤️", "🎉")
+  created_at DateTime?     @default(now()) @db.Timestamptz(6)
+
+  message    chat_messages @relation(fields: [message_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_message_reactions_message")
+  user       users         @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_message_reactions_user")
+
+  @@unique([message_id, user_id, emoji]) // One user can only react once per emoji per message
+  @@index([message_id])
+  @@index([user_id])
 }
