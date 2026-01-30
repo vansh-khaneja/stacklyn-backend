@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import path from "path";
 import { requestLogger } from "./middlewares/logger.middleware";
 import { requireAuth, extractClerkUser } from "./middlewares/clerk.middleware";
 import userRoutes from "./modules/users/user.route";
@@ -29,6 +30,9 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(requestLogger);
+
+// Serve static files (icons, etc.)
+app.use("/icons", express.static(path.join(__dirname, "public/icons")));
 
 // Public routes
 app.get("/health", (_req, res) => {
