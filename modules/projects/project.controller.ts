@@ -362,3 +362,21 @@ export const updateMemberRole = async (
     res.status(400).json({ error: error.message });
   }
 };
+
+export const getAllUserProjects = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).userId;
+
+    if (!userId) {
+      return res.status(401).json({ error: "User not found" });
+    }
+
+    const limit = parseInt(req.query.limit as string) || 9;
+    const offset = parseInt(req.query.offset as string) || 0;
+
+    const result = await projectService.getAllUserProjects(userId, limit, offset);
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+};

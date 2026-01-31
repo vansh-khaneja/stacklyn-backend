@@ -5,6 +5,7 @@ const router = Router();
 
 router.post("/", projectController.createProject);
 router.get("/", projectController.getAllProjects);
+router.get("/all", projectController.getAllUserProjects);
 router.get("/memberships", projectController.getMyMemberships);
 router.get("/:id", projectController.getProjectById);
 router.put("/:id", projectController.updateProject);

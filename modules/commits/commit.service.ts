@@ -11,7 +11,7 @@ export const createCommit = async (data: {
 }) => {
   // Check if this is the first commit for this prompt
   const existingCommits = await commitRepo.getCommitsByPromptId(data.prompt_id);
-  const isFirstCommit = existingCommits.length === 0;
+  const isFirstCommit = existingCommits.total === 0;
 
   // Create the commit
   const commit = await commitRepo.createCommit(data);

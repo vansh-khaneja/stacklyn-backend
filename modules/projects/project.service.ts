@@ -84,3 +84,11 @@ export const updateMemberRole = async (
   await getProjectById(projectId);
   return projectRepo.updateMemberRole(projectId, userId, role);
 };
+
+export const getAllUserProjects = async (
+  userId: string,
+  limit: number = 9,
+  offset: number = 0
+) => {
+  return projectRepo.getAllUserProjects(userId, limit, offset);
+};

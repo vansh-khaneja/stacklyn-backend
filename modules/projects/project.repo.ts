@@ -103,23 +103,53 @@ export const removeProjectMember = async (projectId: string, userId: string) => 
 };
 
 export const getProjectsByUserId = async (userId: string) => {
-  return prisma.projects.findMany({
+  // Get personal projects: user is a member AND only 1 member total
+  const projects = await prisma.projects.findMany({
     where: {
-      created_by: userId,
+      project_users: {
+        some: { user_id: userId },
+      },
+    },
+    include: {
+      project_users: {
+        include: {
+          users: {
+            select: { id: true, email: true, name: true, image_url: true },
+          },
+        },
+      },
+      _count: {
+        select: { project_users: true },
+      },
     },
   });
+
+  // Filter to only projects with exactly 1 member (personal projects)
+  return projects.filter((project) => project._count.project_users === 1);
 };
 
 export const getMembershipsByUserId = async (userId: string) => {
-  return prisma.project_users.findMany({
+  // Get shared projects: user is a member AND 2+ members total
+  const memberships = await prisma.project_users.findMany({
     where: { user_id: userId },
     include: {
-      projects: true,
+      projects: {
+        include: {
+          _count: {
+            select: { project_users: true },
+          },
+        },
+      },
       users: {
         select: { id: true, email: true, name: true, image_url: true },
       },
     },
   });
+
+  // Filter to only projects with 2+ members (shared projects)
+  return memberships.filter(
+    (membership) => membership.projects._count.project_users >= 2
+  );
 };
 
 export const updateMemberRole = async (
@@ -141,4 +171,51 @@ export const updateMemberRole = async (
       },
     },
   });
+};
+
+export const getAllUserProjects = async (
+  userId: string,
+  limit: number = 9,
+  offset: number = 0
+) => {
+  // Get all projects where user is a member, with pagination
+  const [projects, total] = await Promise.all([
+    prisma.projects.findMany({
+      where: {
+        project_users: {
+          some: { user_id: userId },
+        },
+      },
+      include: {
+        project_users: {
+          include: {
+            users: {
+              select: { id: true, email: true, name: true, image_url: true },
+            },
+          },
+        },
+        _count: {
+          select: { project_users: true },
+        },
+      },
+      orderBy: { created_at: "desc" },
+      skip: offset,
+      take: limit,
+    }),
+    prisma.projects.count({
+      where: {
+        project_users: {
+          some: { user_id: userId },
+        },
+      },
+    }),
+  ]);
+
+  // Add type field based on member count
+  const projectsWithType = projects.map((project) => ({
+    ...project,
+    type: project._count.project_users === 1 ? "personal" : "shared",
+  }));
+
+  return { projects: projectsWithType, total };
 };
