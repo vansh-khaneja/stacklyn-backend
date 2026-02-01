@@ -8,6 +8,7 @@ router.get("/", commitController.getAllCommits);
 router.get("/compare/:commitId1/:commitId2", commitController.compareCommits);
 router.get("/prompt/:promptId/releases", commitController.getProductionReleases);
 router.post("/generate-message", commitController.generateCommitMessage);
+router.post("/push-to-main", commitController.pushToMain);
 router.get("/:id", commitController.getCommitById);
 router.put("/:id", commitController.updateCommit);
 router.delete("/:id", commitController.deleteCommit);

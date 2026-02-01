@@ -172,7 +172,7 @@ export const getProductionReleases = async (
   };
 };
 
-// Push a commit to production - moves PROD tag and adds version tag
+// Push a commit to production - creates a copy with PROD and version tags
 export const pushToProd = async (commitId: string) => {
   const commit = await getCommitById(commitId);
 
@@ -183,12 +183,21 @@ export const pushToProd = async (commitId: string) => {
   // Remove PROD tag from all commits of this prompt
   await commitRepo.removeTagFromPromptCommits(commit.prompt_id, "PROD");
 
-  // Add PROD tag and version tag to the selected commit
-  await commitRepo.addTagToCommit(commitId, "PROD");
-  await commitRepo.addTagToCommit(commitId, nextVersion);
+  // Create a copy of the commit for production
+  const prodCommit = await commitRepo.createCommit({
+    prompt_id: commit.prompt_id,
+    system_prompt: commit.system_prompt,
+    user_query: commit.user_query,
+    commit_message: commit.commit_message || undefined,
+    created_by: commit.created_by,
+  });
 
-  // Return the updated commit
-  return getCommitById(commitId);
+  // Add PROD tag and version tag to the new copy
+  await commitRepo.addTagToCommit(prodCommit.id, "PROD");
+  await commitRepo.addTagToCommit(prodCommit.id, nextVersion);
+
+  // Return the new production commit
+  return getCommitById(prodCommit.id);
 };
 
 export const compareCommits = async (commitId1: string, commitId2: string) => {
@@ -269,6 +278,28 @@ export const compareCommits = async (commitId1: string, commitId2: string) => {
     },
     diff: mergedDiff,
   };
+};
+
+// Push a commit to main - deletes the old main commit and makes this the new main
+export const pushToMain = async (targetCommitId: string) => {
+  const targetCommit = await getCommitById(targetCommitId);
+
+  // Check if target already has main tag
+  const targetHasMain = targetCommit.commit_tags.some((t) => t.tag_name === "main");
+  if (targetHasMain) {
+    throw new Error("This commit already has the 'main' tag");
+  }
+
+  // Find and delete the current main commit
+  const currentMainCommit = await commitRepo.getMainCommitForPrompt(targetCommit.prompt_id);
+  if (currentMainCommit) {
+    await commitRepo.deleteCommit(currentMainCommit.id);
+  }
+
+  // Add main tag to target commit
+  await commitRepo.addTagToCommit(targetCommitId, "main");
+
+  return getCommitById(targetCommitId);
 };
 
 // Generate commit message based on diff between old and new system prompts

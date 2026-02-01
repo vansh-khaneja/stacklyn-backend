@@ -6,7 +6,6 @@ import * as projectController from "./modules/projects/project.controller";
 import * as promptController from "./modules/prompts/prompt.controller";
 import * as commitController from "./modules/commits/commit.controller";
 import * as runController from "./modules/runs/run.controller";
-import * as scoreController from "./modules/scores/score.controller";
 import * as tagController from "./modules/tags/tag.controller";
 
 // Mock request and response objects

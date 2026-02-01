@@ -18,8 +18,7 @@ export const getCommitById = async (id: string) => {
     include: {
       commit_tags: true,
       prompt_runs: true,
-      scores: true,
-    },
+          },
   });
 };
 
@@ -57,8 +56,7 @@ export const getCommitsByPromptId = async (
       include: {
         commit_tags: true,
         prompt_runs: true,
-        scores: true,
-      },
+              },
       orderBy: {
         created_at: "desc",
       },
@@ -80,8 +78,7 @@ export const getCommitsByPromptId = async (
       include: {
         commit_tags: true,
         prompt_runs: true,
-        scores: true,
-      },
+              },
     }),
   ]);
 
@@ -197,4 +194,18 @@ export const getVersionedCommits = async (
   ]);
 
   return { commits, total };
+};
+
+// Get the current main commit for a prompt
+export const getMainCommitForPrompt = async (promptId: string) => {
+  return prisma.commits.findFirst({
+    where: {
+      prompt_id: promptId,
+      commit_tags: {
+        some: {
+          tag_name: "main",
+        },
+      },
+    },
+  });
 };

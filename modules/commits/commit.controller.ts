@@ -383,6 +383,54 @@ export const getProductionReleases = async (
   }
 };
 
+export const pushToMain = async (req: Request, res: Response) => {
+  try {
+    const { commitId } = req.body;
+    const userId = (req as any).userId;
+
+    if (!userId) {
+      return res.status(401).json({ error: "User not found" });
+    }
+
+    if (!commitId) {
+      return res.status(400).json({ error: "commitId is required" });
+    }
+
+    // Verify user has access to the commit
+    const hasAccess = await verifyCommitAccess(userId, commitId);
+    if (!hasAccess) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    const commit = await commitService.getCommitById(commitId);
+    const prompt = await promptService.getPromptById(commit.prompt_id);
+
+    // Viewers cannot change main tag
+    const role = await getUserProjectRole(userId, prompt.project_id);
+    if (!role) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+    if (role === "viewer") {
+      return res.status(403).json({ error: "Access denied. Viewers cannot change the main tag." });
+    }
+
+    const updatedCommit = await commitService.pushToMain(commitId);
+
+    logActivity({
+      userId,
+      projectId: prompt.project_id,
+      entityType: "commit",
+      entityId: updatedCommit.id,
+      action: "updated",
+      title: `Changed main commit for '${prompt.name}'`,
+    });
+
+    res.json(updatedCommit);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
 export const generateCommitMessage = async (req: Request, res: Response) => {
   try {
     console.log("[generateCommitMessage] Request body:", JSON.stringify(req.body, null, 2));
