@@ -57,7 +57,8 @@ jobs:
                       file: ./Dockerfile
                       push: true
                       platforms: linux/amd64,linux/arm64
-                      tags: ${{ secrets.DOCKER_USERNAME }}/flask-app:latest
+                      tags: ${{ secrets.DOCKER_USERNAME }}/stacklyn-backend:latest  # ✅
+
 
                 - name: Image digest
                   run: echo ${{ steps.build-and-push-docker-image.outputs.digest }}

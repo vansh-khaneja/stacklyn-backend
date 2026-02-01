@@ -1,12 +1,23 @@
 import prisma from "../../config/db";
+import { randomBytes } from "crypto";
+
+// Generate a unique 8-character display ID
+const generateDisplayId = (): string => {
+  return randomBytes(4).toString("hex");
+};
 
 export const createProject = async (data: {
   name: string;
   description?: string;
   created_by: string;
 }) => {
+  const display_id = generateDisplayId();
+
   const project = await prisma.projects.create({
-    data,
+    data: {
+      ...data,
+      display_id,
+    },
   });
 
   // Add creator to project_users as admin

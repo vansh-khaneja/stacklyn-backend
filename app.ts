@@ -14,6 +14,8 @@ import activityRoutes from "./modules/activities/activity.routes";
 import chatRoutes from "./modules/chat/chat.routes";
 import tokenUsageRoutes from "./modules/token-usage/token-usage.routes";
 import statsRoutes from "./modules/stats/stats.routes";
+import apiKeysRoutes from "./modules/api-keys/api-keys.routes";
+import v1Routes from "./modules/v1/v1.routes";
 
 const app = express();
 
@@ -43,6 +45,9 @@ app.get("/health", (_req, res) => {
   });
 });
 
+// Public API v1 - API key authentication (for SDKs)
+app.use("/v1", v1Routes);
+
 // Protected routes - require Clerk authentication
 app.use("/api", requireAuth, extractClerkUser);
 app.use("/api/users", userRoutes);
@@ -56,6 +61,7 @@ app.use("/api/activities", activityRoutes);
 app.use("/api/projects/:projectId/chat", chatRoutes);
 app.use("/api/token-usage", tokenUsageRoutes);
 app.use("/api/stats", statsRoutes);
+app.use("/api/api-keys", apiKeysRoutes);
 
 // Error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
