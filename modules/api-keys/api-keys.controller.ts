@@ -37,7 +37,7 @@ export const getMyApiKeys = async (req: Request, res: Response) => {
   }
 };
 
-export const revokeApiKey = async (req: Request, res: Response) => {
+export const revokeApiKey = async (req: Request<{ id: string }>, res: Response) => {
   try {
     const userId = (req as any).userId;
     const { id } = req.params;
@@ -59,7 +59,7 @@ export const revokeApiKey = async (req: Request, res: Response) => {
   }
 };
 
-export const deleteApiKey = async (req: Request, res: Response) => {
+export const deleteApiKey = async (req: Request<{ id: string }>, res: Response) => {
   try {
     const userId = (req as any).userId;
     const { id } = req.params;
