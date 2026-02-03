@@ -72,6 +72,6 @@ jobs:
                   docker run -d \
                     --name stacklyn-backend \
                     -p 8001:8001 \
-                    --env-file /opt/stacklyn-backend/.env \
+                    --env-file /opt/cd-app/.env \
                     --restart unless-stopped \
                     ${{ secrets.DOCKER_USERNAME }}/stacklyn-backend:latest
