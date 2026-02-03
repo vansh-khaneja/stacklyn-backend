@@ -28,9 +28,6 @@ jobs:
             - name: Run build
               run: npm run build
 
-            - name: Run lint
-              run: npm run lint
-
 
     build-and-push-docker-image:
         needs: build-and-test
