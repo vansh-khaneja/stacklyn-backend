@@ -11,7 +11,9 @@ import {
   ChatMessage,
   ReactionData,
   OnlineUser,
+  NotificationData,
 } from "./types";
+import { notificationService, Notification } from "../../modules/notifications/notification.service";
 
 let io: Server<ClientToServerEvents, ServerToClientEvents, {}, SocketData> | null = null;
 
@@ -20,6 +22,9 @@ const projectOnlineUsers = new Map<string, Map<string, OnlineUser>>();
 
 // Track all online users globally (site-wide): userId -> OnlineUser
 const globalOnlineUsers = new Map<string, OnlineUser>();
+
+// Track socket IDs by user ID for direct messaging
+const userSockets = new Map<string, Set<string>>();
 
 // Get room name for a project
 const getProjectRoom = (projectId: string) => `project:${projectId}`;
@@ -91,8 +96,14 @@ export const initializeWebSocket = (httpServer: HttpServer) => {
   });
 
   // Connection handler
-  io.on("connection", (socket) => {
+  io.on("connection", async (socket) => {
     console.log(`🔌 User connected: ${socket.data.userId}`);
+
+    // Track this socket for the user
+    if (!userSockets.has(socket.data.userId)) {
+      userSockets.set(socket.data.userId, new Set());
+    }
+    userSockets.get(socket.data.userId)!.add(socket.id);
 
     // Create user info for global tracking
     const globalUserInfo: OnlineUser = {
@@ -111,6 +122,17 @@ export const initializeWebSocket = (httpServer: HttpServer) => {
       globalOnlineUsers.set(socket.data.userId, globalUserInfo);
       // Broadcast to all other users that this user came online
       socket.broadcast.emit("user_online", { user: globalUserInfo });
+    }
+
+    // Send pending notifications from Redis
+    try {
+      const pendingNotifications = await notificationService.getNotifications(socket.data.userId);
+      if (pendingNotifications.length > 0) {
+        socket.emit("pending_notifications", { notifications: pendingNotifications as NotificationData[] });
+        console.log(`📬 Sent ${pendingNotifications.length} pending notifications to ${socket.data.userId}`);
+      }
+    } catch (error) {
+      console.error("Failed to fetch pending notifications:", error);
     }
 
     console.log(`👥 Global online users: ${globalOnlineUsers.size}`);
@@ -198,6 +220,15 @@ export const initializeWebSocket = (httpServer: HttpServer) => {
 
     // Disconnect handler
     socket.on("disconnect", () => {
+      // Remove this socket from user's socket set
+      const socketSet = userSockets.get(socket.data.userId);
+      if (socketSet) {
+        socketSet.delete(socket.id);
+        if (socketSet.size === 0) {
+          userSockets.delete(socket.data.userId);
+        }
+      }
+
       // Remove user from all projects they were in
       socket.data.joinedProjects.forEach((projectId) => {
         const room = getProjectRoom(projectId);
@@ -220,11 +251,10 @@ export const initializeWebSocket = (httpServer: HttpServer) => {
       });
 
       // Check if user has any other active connections (multiple tabs)
-      const userSockets = Array.from(io?.sockets.sockets.values() || [])
-        .filter(s => s.data.userId === socket.data.userId && s.id !== socket.id);
+      const remainingSockets = userSockets.get(socket.data.userId);
 
       // If no other connections, remove from global online users
-      if (userSockets.length === 0) {
+      if (!remainingSockets || remainingSockets.size === 0) {
         globalOnlineUsers.delete(socket.data.userId);
         // Broadcast to everyone that this user went offline
         socket.broadcast.emit("user_offline", { userId: socket.data.userId });
@@ -287,4 +317,33 @@ export const emitReactionRemoved = (
   const room = getProjectRoom(projectId);
   io.to(room).emit("reaction_removed", { projectId, messageId, reactionId, emoji, userId });
   console.log(`📨 Emitted reaction_removed to room: ${room}`);
+};
+
+// Send notification to a specific user via WebSocket (for real-time alert)
+export const emitNotificationToUser = (userId: string, notification: NotificationData) => {
+  if (!io) return;
+  
+  const socketIds = userSockets.get(userId);
+  if (socketIds && socketIds.size > 0) {
+    // User is online, send to all their sockets (tabs)
+    socketIds.forEach((socketId) => {
+      io?.to(socketId).emit("notification", notification);
+    });
+    console.log(`🔔 Sent notification to user ${userId} (${socketIds.size} sockets)`);
+    return true;
+  }
+  
+  // User is offline, notification is already in Redis
+  console.log(`📭 User ${userId} is offline, notification stored in Redis`);
+  return false;
+};
+
+// Check if a user is currently online
+export const isUserOnline = (userId: string): boolean => {
+  return globalOnlineUsers.has(userId);
+};
+
+// Get all online user IDs
+export const getOnlineUserIds = (): string[] => {
+  return Array.from(globalOnlineUsers.keys());
 };

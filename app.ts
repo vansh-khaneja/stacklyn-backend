@@ -15,6 +15,7 @@ import chatRoutes from "./modules/chat/chat.routes";
 import tokenUsageRoutes from "./modules/token-usage/token-usage.routes";
 import statsRoutes from "./modules/stats/stats.routes";
 import apiKeysRoutes from "./modules/api-keys/api-keys.routes";
+import notificationRoutes from "./modules/notifications/notification.routes";
 import v1Routes from "./modules/v1/v1.routes";
 
 const app = express();
@@ -62,6 +63,7 @@ app.use("/api/projects/:projectId/chat", chatRoutes);
 app.use("/api/token-usage", tokenUsageRoutes);
 app.use("/api/stats", statsRoutes);
 app.use("/api/api-keys", apiKeysRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 // Error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

@@ -200,7 +200,7 @@ export const addProjectMember = async (
       return res.status(403).json({ error: "Access denied. Only admins can add members." });
     }
 
-    const member = await projectService.addProjectMember(id, memberUserId, role);
+    const member = await projectService.addProjectMember(id, memberUserId, role, userId);
 
     logActivity({
       userId,
@@ -235,7 +235,7 @@ export const removeProjectMember = async (
       return res.status(403).json({ error: "Access denied. Only admins can remove members." });
     }
 
-    await projectService.removeProjectMember(id, memberUserId);
+    await projectService.removeProjectMember(id, memberUserId, userId);
 
     logActivity({
       userId,
@@ -295,7 +295,7 @@ export const addProjectMemberByEmail = async (
       return res.status(403).json({ error: "Access denied. Only admins can add members." });
     }
 
-    const member = await projectService.addProjectMemberByEmail(id, email, role);
+    const member = await projectService.addProjectMemberByEmail(id, email, role, userId);
 
     logActivity({
       userId,

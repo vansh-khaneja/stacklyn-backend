@@ -1,5 +1,7 @@
 import * as projectRepo from "./project.repo";
 import * as userRepo from "../users/user.repo";
+import { notificationService } from "../notifications/notification.service";
+import { emitNotificationToUser } from "../../services/websocket";
 
 export const createProject = async (data: {
   name: string;
@@ -46,30 +48,81 @@ export const getProjectMembers = async (projectId: string) => {
 export const addProjectMember = async (
   projectId: string,
   userId: string,
-  role: string = "member"
+  role: string = "member",
+  invitedByUserId?: string
 ) => {
-  await getProjectById(projectId);
-  return projectRepo.addProjectMember(projectId, userId, role);
+  const project = await getProjectById(projectId);
+  const result = await projectRepo.addProjectMember(projectId, userId, role);
+  
+  // Send notification if invited by someone else
+  if (invitedByUserId && invitedByUserId !== userId) {
+    const inviter = await userRepo.getUserById(invitedByUserId);
+    const notification = await notificationService.notifyInvite(
+      userId,
+      projectId,
+      project.name,
+      invitedByUserId,
+      inviter?.name || "Someone"
+    );
+    emitNotificationToUser(userId, notification);
+  }
+  
+  return result;
 };
 
-export const removeProjectMember = async (projectId: string, userId: string) => {
-  await getProjectById(projectId);
-  return projectRepo.removeProjectMember(projectId, userId);
+export const removeProjectMember = async (
+  projectId: string,
+  userId: string,
+  removedByUserId?: string
+) => {
+  const project = await getProjectById(projectId);
+  const result = await projectRepo.removeProjectMember(projectId, userId);
+  
+  // Send notification if removed by someone else
+  if (removedByUserId && removedByUserId !== userId) {
+    const remover = await userRepo.getUserById(removedByUserId);
+    const notification = await notificationService.notifyRemoved(
+      userId,
+      projectId,
+      project.name,
+      removedByUserId,
+      remover?.name || "Someone"
+    );
+    emitNotificationToUser(userId, notification);
+  }
+  
+  return result;
 };
 
 export const addProjectMemberByEmail = async (
   projectId: string,
   email: string,
-  role: string = "member"
+  role: string = "member",
+  invitedByUserId?: string
 ) => {
-  await getProjectById(projectId);
+  const project = await getProjectById(projectId);
 
   const user = await userRepo.getUserByEmail(email);
   if (!user) {
     throw new Error("User not found with this email");
   }
 
-  return projectRepo.addProjectMember(projectId, user.id, role);
+  const result = await projectRepo.addProjectMember(projectId, user.id, role);
+  
+  // Send notification
+  if (invitedByUserId && invitedByUserId !== user.id) {
+    const inviter = await userRepo.getUserById(invitedByUserId);
+    const notification = await notificationService.notifyInvite(
+      user.id,
+      projectId,
+      project.name,
+      invitedByUserId,
+      inviter?.name || "Someone"
+    );
+    emitNotificationToUser(user.id, notification);
+  }
+  
+  return result;
 };
 
 export const getMembershipsByUserId = async (userId: string) => {

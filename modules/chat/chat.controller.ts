@@ -9,7 +9,52 @@ import {
   emitNewReply,
   emitNewReaction,
   emitReactionRemoved,
+  emitNotificationToUser,
 } from "../../services/websocket";
+import { notificationService } from "../notifications/notification.service";
+import prisma from "../../config/db";
+
+// Helper to extract @mentions from message content
+const extractMentions = (content: string): string[] => {
+  // Match @username patterns - captures word after @ and allows multi-word names
+  const mentionRegex = /@(\w+)/g;
+  const mentions: string[] = [];
+  let match;
+  while ((match = mentionRegex.exec(content)) !== null) {
+    mentions.push(match[1]);
+  }
+  console.log(`📢 Extracted mentions from "${content}":`, mentions);
+  return mentions;
+};
+
+// Helper to find users by name mention
+const findUsersByMention = async (projectId: string, mentionNames: string[]): Promise<string[]> => {
+  if (mentionNames.length === 0) return [];
+  
+  // Get project members
+  const members = await prisma.project_users.findMany({
+    where: { project_id: projectId },
+    include: { users: true },
+  });
+  
+  console.log(`📢 Project members:`, members.map(m => ({ userId: m.user_id, name: m.users?.name })));
+  
+  const userIds: string[] = [];
+  for (const name of mentionNames) {
+    const normalizedName = name.toLowerCase();
+    const member = members.find(
+      (m) => m.users?.name?.toLowerCase().includes(normalizedName)
+    );
+    if (member?.user_id) {
+      console.log(`📢 Matched mention "${name}" to user ${member.users?.name} (${member.user_id})`);
+      userIds.push(member.user_id);
+    } else {
+      console.log(`📢 No match found for mention "${name}"`);
+    }
+  }
+  
+  return userIds;
+};
 
 export const getProjectMessages = async (
   req: Request<{ projectId: string }>,
@@ -87,6 +132,28 @@ export const createMessage = async (
 
     // Emit WebSocket event for real-time updates
     emitNewMessage(projectId, messageResponse);
+
+    // Handle @mentions - send notifications
+    const mentionNames = extractMentions(content);
+    if (mentionNames.length > 0) {
+      const project = await prisma.projects.findUnique({ where: { id: projectId } });
+      const mentionedUserIds = await findUsersByMention(projectId, mentionNames);
+      
+      for (const mentionedUserId of mentionedUserIds) {
+        // Don't notify yourself
+        if (mentionedUserId !== userId) {
+          const notification = await notificationService.notifyMention(
+            mentionedUserId,
+            projectId,
+            project?.name || "Unknown Project",
+            message.id,
+            userId,
+            message.user?.name || "Someone"
+          );
+          emitNotificationToUser(mentionedUserId, notification);
+        }
+      }
+    }
 
     res.status(201).json(messageResponse);
   } catch (error: any) {
@@ -182,6 +249,42 @@ export const createReply = async (
 
     // Emit WebSocket event for real-time updates
     emitNewReply(projectId, messageId, replyResponse);
+
+    // Send reply notification to the parent message author
+    if (parentMessage.user_id && parentMessage.user_id !== userId) {
+      const project = await prisma.projects.findUnique({ where: { id: projectId } });
+      const notification = await notificationService.notifyReply(
+        parentMessage.user_id,
+        projectId,
+        project?.name || "Unknown Project",
+        messageId,
+        userId,
+        reply.user?.name || "Someone"
+      );
+      emitNotificationToUser(parentMessage.user_id, notification);
+    }
+
+    // Also handle @mentions in replies
+    const mentionNames = extractMentions(content);
+    if (mentionNames.length > 0) {
+      const project = await prisma.projects.findUnique({ where: { id: projectId } });
+      const mentionedUserIds = await findUsersByMention(projectId, mentionNames);
+      
+      for (const mentionedUserId of mentionedUserIds) {
+        // Don't notify yourself or the parent message author (they already got reply notification)
+        if (mentionedUserId !== userId && mentionedUserId !== parentMessage.user_id) {
+          const notification = await notificationService.notifyMention(
+            mentionedUserId,
+            projectId,
+            project?.name || "Unknown Project",
+            reply.id,
+            userId,
+            reply.user?.name || "Someone"
+          );
+          emitNotificationToUser(mentionedUserId, notification);
+        }
+      }
+    }
 
     res.status(201).json(replyResponse);
   } catch (error: any) {

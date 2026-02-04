@@ -10,11 +10,25 @@ services:
       POSTGRES_PASSWORD: stacklyn123
       POSTGRES_DB: stacklyn
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U stacklyn -d stacklyn"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis-stacklyn
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -29,12 +43,15 @@ services:
       - "8001:8001"
     environment:
       DATABASE_URL: postgresql://stacklyn:stacklyn123@postgres:5432/stacklyn
+      REDIS_URL: redis://redis:6379
       NODE_ENV: production
       PORT: 8001
     env_file:
       - .env
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     command: >
       sh -c "
@@ -46,3 +63,4 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:
