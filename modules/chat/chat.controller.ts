@@ -4,6 +4,12 @@ import {
   verifyProjectAccess,
   getUserProjectRole,
 } from "../../utils/authorization.utils";
+import {
+  emitNewMessage,
+  emitNewReply,
+  emitNewReaction,
+  emitReactionRemoved,
+} from "../../services/websocket";
 
 export const getProjectMessages = async (
   req: Request<{ projectId: string }>,
@@ -62,12 +68,13 @@ export const createMessage = async (
     // Get user role for response
     const userRole = await getUserProjectRole(userId, projectId);
 
-    res.status(201).json({
+    const messageResponse = {
       id: message.id,
       content: message.content,
       created_at: message.created_at,
       updated_at: message.updated_at,
       parent_message_id: message.parent_message_id,
+      replies_count: 0,
       user: message.user
         ? {
             id: message.user.id,
@@ -76,7 +83,12 @@ export const createMessage = async (
             role: userRole,
           }
         : null,
-    });
+    };
+
+    // Emit WebSocket event for real-time updates
+    emitNewMessage(projectId, messageResponse);
+
+    res.status(201).json(messageResponse);
   } catch (error: any) {
     res.status(400).json({ error: error.message });
   }
@@ -152,7 +164,7 @@ export const createReply = async (
     // Get user role for response
     const userRole = await getUserProjectRole(userId, projectId);
 
-    res.status(201).json({
+    const replyResponse = {
       id: reply.id,
       content: reply.content,
       created_at: reply.created_at,
@@ -166,7 +178,12 @@ export const createReply = async (
             role: userRole,
           }
         : null,
-    });
+    };
+
+    // Emit WebSocket event for real-time updates
+    emitNewReply(projectId, messageId, replyResponse);
+
+    res.status(201).json(replyResponse);
   } catch (error: any) {
     res.status(400).json({ error: error.message });
   }
@@ -331,6 +348,15 @@ export const addReaction = async (
     }
 
     const reaction = await chatService.addReaction(messageId, userId, emoji.trim());
+
+    // Emit WebSocket event for real-time updates
+    emitNewReaction(projectId, messageId, {
+      id: reaction.id,
+      message_id: reaction.message_id,
+      emoji: reaction.emoji,
+      user: reaction.user,
+    });
+
     res.status(201).json(reaction);
   } catch (error: any) {
     // Handle duplicate reaction
@@ -365,7 +391,14 @@ export const removeReaction = async (
       return res.status(404).json({ error: "Message not found in this project" });
     }
 
-    await chatService.removeReaction(messageId, userId, decodeURIComponent(emoji));
+    const decodedEmoji = decodeURIComponent(emoji);
+    const removedReaction = await chatService.removeReaction(messageId, userId, decodedEmoji);
+
+    // Emit WebSocket event for real-time updates
+    if (removedReaction) {
+      emitReactionRemoved(projectId, messageId, removedReaction.id, decodedEmoji, userId);
+    }
+
     res.status(204).send();
   } catch (error: any) {
     res.status(404).json({ error: error.message });

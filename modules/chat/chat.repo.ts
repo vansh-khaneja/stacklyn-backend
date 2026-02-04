@@ -130,11 +130,20 @@ export const removeReaction = async (
   userId: string,
   emoji: string
 ) => {
-  return prisma.message_reactions.deleteMany({
+  // Find the reaction first to return its ID
+  const reaction = await prisma.message_reactions.findFirst({
     where: {
       message_id: messageId,
       user_id: userId,
       emoji,
     },
   });
+
+  if (reaction) {
+    await prisma.message_reactions.delete({
+      where: { id: reaction.id },
+    });
+  }
+
+  return reaction;
 };
