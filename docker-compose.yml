@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres-stacklyn
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: stacklyn
+      POSTGRES_PASSWORD: stacklyn123
+      POSTGRES_DB: stacklyn
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stacklyn -d stacklyn"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: stacklyn-app
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    environment:
+      DATABASE_URL: postgresql://stacklyn:stacklyn123@postgres:5432/stacklyn
+      NODE_ENV: production
+      PORT: 8001
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      sh -c "
+        echo 'Waiting for PostgreSQL...' &&
+        sleep 5 &&
+        npx prisma db push &&
+        npm start
+      "
+
+volumes:
+  postgres_data:
