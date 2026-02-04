@@ -33,23 +33,6 @@ export interface OnlineUser {
   image_url: string | null;
 }
 
-// Notification types
-export type NotificationType = "invite" | "removed" | "mention" | "reply";
-
-export interface NotificationData {
-  id: string;
-  type: NotificationType;
-  title: string;
-  message: string;
-  projectId?: string;
-  projectName?: string;
-  messageId?: string;
-  fromUserId?: string;
-  fromUserName?: string;
-  link?: string;
-  createdAt: string;
-}
-
 // Server to Client events
 export interface ServerToClientEvents {
   new_message: (data: { projectId: string; message: ChatMessage }) => void;
@@ -67,9 +50,6 @@ export interface ServerToClientEvents {
   global_online_users: (data: { users: OnlineUser[] }) => void;
   user_online: (data: { user: OnlineUser }) => void;
   user_offline: (data: { userId: string }) => void;
-  // Notifications
-  notification: (data: NotificationData) => void;
-  pending_notifications: (data: { notifications: NotificationData[] }) => void;
 }
 
 // Client to Server events
