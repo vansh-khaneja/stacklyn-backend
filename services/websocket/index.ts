@@ -10,9 +10,16 @@ import {
   SocketData,
   ChatMessage,
   ReactionData,
+  OnlineUser,
 } from "./types";
 
 let io: Server<ClientToServerEvents, ServerToClientEvents, {}, SocketData> | null = null;
+
+// Track online users per project: projectId -> Map<userId, OnlineUser>
+const projectOnlineUsers = new Map<string, Map<string, OnlineUser>>();
+
+// Track all online users globally (site-wide): userId -> OnlineUser
+const globalOnlineUsers = new Map<string, OnlineUser>();
 
 // Get room name for a project
 const getProjectRoom = (projectId: string) => `project:${projectId}`;
@@ -70,8 +77,10 @@ export const initializeWebSocket = (httpServer: HttpServer) => {
         return next(new Error("User not found in database"));
       }
 
-      // Attach database user ID to socket (not Clerk ID)
+      // Attach database user info to socket
       socket.data.userId = dbUser.id;
+      socket.data.userName = dbUser.name;
+      socket.data.userImageUrl = dbUser.image_url;
       socket.data.joinedProjects = new Set();
       
       next();
@@ -84,6 +93,27 @@ export const initializeWebSocket = (httpServer: HttpServer) => {
   // Connection handler
   io.on("connection", (socket) => {
     console.log(`🔌 User connected: ${socket.data.userId}`);
+
+    // Create user info for global tracking
+    const globalUserInfo: OnlineUser = {
+      id: socket.data.userId,
+      name: socket.data.userName,
+      image_url: socket.data.userImageUrl,
+    };
+
+    // Send current global online users to the connecting user
+    socket.emit("global_online_users", { 
+      users: Array.from(globalOnlineUsers.values()) 
+    });
+
+    // Add user to global online users (if not already there from another tab)
+    if (!globalOnlineUsers.has(socket.data.userId)) {
+      globalOnlineUsers.set(socket.data.userId, globalUserInfo);
+      // Broadcast to all other users that this user came online
+      socket.broadcast.emit("user_online", { user: globalUserInfo });
+    }
+
+    console.log(`👥 Global online users: ${globalOnlineUsers.size}`);
 
     // Join project room
     socket.on("join_project", async (projectId: string) => {
@@ -99,9 +129,40 @@ export const initializeWebSocket = (httpServer: HttpServer) => {
         const room = getProjectRoom(projectId);
         socket.join(room);
         socket.data.joinedProjects.add(projectId);
+
+        // Create user info object
+        const userInfo: OnlineUser = {
+          id: socket.data.userId,
+          name: socket.data.userName,
+          image_url: socket.data.userImageUrl,
+        };
+
+        // Initialize project's online users map if needed
+        if (!projectOnlineUsers.has(projectId)) {
+          projectOnlineUsers.set(projectId, new Map());
+        }
+
+        // Get current online users BEFORE adding this user
+        const currentOnlineUsers = Array.from(projectOnlineUsers.get(projectId)!.values());
+
+        // Add this user to project's online users
+        projectOnlineUsers.get(projectId)!.set(socket.data.userId, userInfo);
+
+        // Send current online users list to the joining user
+        socket.emit("project_online_users", { 
+          projectId, 
+          users: currentOnlineUsers 
+        });
+
+        // Broadcast to others in the room that this user joined
+        socket.to(room).emit("user_joined_project", { 
+          projectId, 
+          user: userInfo 
+        });
+
         socket.emit("joined_project", { projectId });
         
-        console.log(`📥 User ${socket.data.userId} joined room: ${room}`);
+        console.log(`📥 User ${socket.data.userId} joined room: ${room} (${projectOnlineUsers.get(projectId)!.size} online)`);
       } catch (error) {
         console.error("Error joining project room:", error);
         socket.emit("error", { message: "Failed to join project" });
@@ -113,6 +174,23 @@ export const initializeWebSocket = (httpServer: HttpServer) => {
       const room = getProjectRoom(projectId);
       socket.leave(room);
       socket.data.joinedProjects.delete(projectId);
+
+      // Remove user from project's online users
+      if (projectOnlineUsers.has(projectId)) {
+        projectOnlineUsers.get(projectId)!.delete(socket.data.userId);
+        
+        // Clean up empty projects
+        if (projectOnlineUsers.get(projectId)!.size === 0) {
+          projectOnlineUsers.delete(projectId);
+        }
+      }
+
+      // Broadcast to others that user left
+      socket.to(room).emit("user_left_project", { 
+        projectId, 
+        userId: socket.data.userId 
+      });
+
       socket.emit("left_project", { projectId });
       
       console.log(`📤 User ${socket.data.userId} left room: ${room}`);
@@ -120,6 +198,39 @@ export const initializeWebSocket = (httpServer: HttpServer) => {
 
     // Disconnect handler
     socket.on("disconnect", () => {
+      // Remove user from all projects they were in
+      socket.data.joinedProjects.forEach((projectId) => {
+        const room = getProjectRoom(projectId);
+        
+        // Remove from online tracking
+        if (projectOnlineUsers.has(projectId)) {
+          projectOnlineUsers.get(projectId)!.delete(socket.data.userId);
+          
+          // Clean up empty projects
+          if (projectOnlineUsers.get(projectId)!.size === 0) {
+            projectOnlineUsers.delete(projectId);
+          }
+        }
+
+        // Broadcast to project room that user went offline
+        io?.to(room).emit("user_left_project", { 
+          projectId, 
+          userId: socket.data.userId 
+        });
+      });
+
+      // Check if user has any other active connections (multiple tabs)
+      const userSockets = Array.from(io?.sockets.sockets.values() || [])
+        .filter(s => s.data.userId === socket.data.userId && s.id !== socket.id);
+
+      // If no other connections, remove from global online users
+      if (userSockets.length === 0) {
+        globalOnlineUsers.delete(socket.data.userId);
+        // Broadcast to everyone that this user went offline
+        socket.broadcast.emit("user_offline", { userId: socket.data.userId });
+        console.log(`👋 User ${socket.data.userId} is now offline (${globalOnlineUsers.size} online)`);
+      }
+
       console.log(`🔌 User disconnected: ${socket.data.userId}`);
     });
   });

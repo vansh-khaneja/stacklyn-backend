@@ -26,6 +26,13 @@ export interface ReactionData {
   };
 }
 
+// Online user info
+export interface OnlineUser {
+  id: string;
+  name: string | null;
+  image_url: string | null;
+}
+
 // Server to Client events
 export interface ServerToClientEvents {
   new_message: (data: { projectId: string; message: ChatMessage }) => void;
@@ -35,6 +42,14 @@ export interface ServerToClientEvents {
   error: (data: { message: string }) => void;
   joined_project: (data: { projectId: string }) => void;
   left_project: (data: { projectId: string }) => void;
+  // Project-level online presence events
+  project_online_users: (data: { projectId: string; users: OnlineUser[] }) => void;
+  user_joined_project: (data: { projectId: string; user: OnlineUser }) => void;
+  user_left_project: (data: { projectId: string; userId: string }) => void;
+  // Global/site-wide online presence events
+  global_online_users: (data: { users: OnlineUser[] }) => void;
+  user_online: (data: { user: OnlineUser }) => void;
+  user_offline: (data: { userId: string }) => void;
 }
 
 // Client to Server events
@@ -46,5 +61,7 @@ export interface ClientToServerEvents {
 // Socket data (attached to socket instance)
 export interface SocketData {
   userId: string;
+  userName: string | null;
+  userImageUrl: string | null;
   joinedProjects: Set<string>;
 }
