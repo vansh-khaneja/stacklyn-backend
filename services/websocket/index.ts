@@ -288,3 +288,15 @@ export const emitReactionRemoved = (
   io.to(room).emit("reaction_removed", { projectId, messageId, reactionId, emoji, userId });
   console.log(`📨 Emitted reaction_removed to room: ${room}`);
 };
+
+  // Emit notification to a specific user
+  export const emitNotificationToUser = (userId: string, notification: any) => {
+    if (!io) return;
+    // Find all sockets for the user
+    const userSockets = Array.from(io.sockets.sockets.values()).filter(
+      (socket) => socket.data.userId === userId
+    );
+    userSockets.forEach((socket) => {
+      socket.emit("notification", notification);
+    });
+  };

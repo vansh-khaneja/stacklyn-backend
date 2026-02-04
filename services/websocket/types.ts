@@ -50,6 +50,9 @@ export interface ServerToClientEvents {
   global_online_users: (data: { users: OnlineUser[] }) => void;
   user_online: (data: { user: OnlineUser }) => void;
   user_offline: (data: { userId: string }) => void;
+
+  // Notification event
+  notification: (data: any) => void;
 }
 
 // Client to Server events
